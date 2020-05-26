@@ -337,7 +337,6 @@ class ReadYolo4Data:
             # 打开图片
             image = Image.open(image_path)
             image = image.convert("RGB")
-            # image = np.asarray(image)
             # 图片的大小
             image_width, image_height = image.size
 
@@ -518,12 +517,13 @@ class ReadYolo4Data:
         # load train dataset
         dataset = tf.data.Dataset.from_tensor_slices(annotation)
         # 如果使用mosaic数据增强的方式，要先将4个路径合成一条数据，先传入
-        if cfg.data_pretreatment == "mosaic":
-            dataset = dataset.batch(4)
-        # map的作用就是根据定义的 函数，对整个数据集都进行这样的操作
-        # 而不用自己写一个for循环，如：可以自己定义一个归一化操作，然后用.map方法都归一化
-        dataset = dataset.map(self.parse, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        if cfg.data_pretreatment == "mosaic" and mode == 'train':
+            dataset = dataset.repeat().batch(4)
+
         if mode == "train":
+            # map的作用就是根据定义的 函数，对整个数据集都进行这样的操作
+            # 而不用自己写一个for循环，如：可以自己定义一个归一化操作，然后用.map方法都归一化
+            dataset = dataset.map(self.parse, num_parallel_calls=tf.data.experimental.AUTOTUNE)
             # 打乱数据，这里的shuffle的值越接近整个数据集的大小，越贴近概率分布
             # 但是电脑往往没有这么大的内存，所以适量就好
             dataset = dataset.repeat().shuffle(buffer_size=cfg.shuffle_size).batch(self.batch_size)
@@ -531,6 +531,8 @@ class ReadYolo4Data:
             # prefetch官方的说法是可以在gpu训练模型的同时提前预处理下一批数据
             dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
         else:
+            cfg.data_pretreatment = 'normal'
+            dataset = dataset.map(self.parse, num_parallel_calls=tf.data.experimental.AUTOTUNE)
             dataset = dataset.repeat().batch(self.batch_size).prefetch(self.batch_size)
 
         return dataset
@@ -540,8 +542,6 @@ if __name__ == '__main__':
     reader = ReadYolo4Data("../config/2012_train.txt", cfg.input_shape, cfg.batch_size)
     # train, valid = reader.read_data_and_split_data()
     # train_datasets = reader.make_datasets(train)
-    # img, box = next(iter(train_datasets))
-    #
     # img = tf.image.convert_image_dtype(img[3], tf.uint8, saturate=True)
     # img = tf.image.encode_jpeg(img)
     # tf.io.write_file("test.jpg", img)
