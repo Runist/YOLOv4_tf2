@@ -6,20 +6,22 @@
 # @Brief: 将Darknet框架下训练的模型转换成Keras中h5格式
 
 
-import config.config as cfg
-import numpy as np
 import io
-from collections import defaultdict
-import configparser
-
 import os
+import numpy as np
+import configparser
+from collections import defaultdict
+
+from tensorflow.keras.models import load_model
+from tensorflow.keras.layers import Input
 from keras import backend as K
-from keras.layers import (Conv2D, Input, ZeroPadding2D, Add, UpSampling2D, MaxPooling2D, Concatenate)
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.normalization import BatchNormalization
-from keras.models import Model
-from keras.regularizers import l2
-from keras.utils.vis_utils import plot_model as plot
+from tensorflow.keras.layers import (Conv2D, Input, ZeroPadding2D, Add, UpSampling2D, MaxPooling2D, Concatenate)
+from tensorflow.keras.layers import BatchNormalization, LeakyReLU
+from tensorflow.keras.models import Model
+from tensorflow.keras.regularizers import l2
+
+import config.config as cfg
+from nets.model import Mish
 
 
 def unique_config_sections(config_file):
@@ -43,12 +45,10 @@ def unique_config_sections(config_file):
 
 
 def main():
+    config_path = "yolov4.cfg"
+    output_path = cfg.pretrain_weights_path
+    weights_path = 'yolov4.weights'
     weights_only = False
-    plot_model = True
-    config_path = "yolov3.cfg"
-    weights_path = "yolov3.weights"
-    output_path = "../config/convert_yolov3.h5"
-    output_root = os.path.splitext(output_path)[0]
 
     print('Loading weights.')
     weights_file = open(weights_path, 'rb')
@@ -69,16 +69,21 @@ def main():
     cfg_parser.read_file(unique_config_file)
 
     print('Creating Keras model.')
-    input_layer = Input(shape=(416, 416, 3))
+    h, w = cfg.input_shape
+    input_layer = Input(shape=(h, w, 3))
     prev_layer = input_layer
     all_layers = []
 
     weight_decay = float(cfg_parser['net_0']['decay']) if 'net_0' in cfg_parser.sections() else 5e-4
     count = 0
     out_index = []
+    i = 0
 
     for section in cfg_parser.sections():
+        print(i)
+        i += 1
         print('Parsing section {}'.format(section))
+        # 如果是以convolutional开头的，下面同理
         if section.startswith('convolutional'):
             filters = int(cfg_parser[section]['filters'])
             size = int(cfg_parser[section]['size'])
@@ -89,11 +94,12 @@ def main():
 
             padding = 'same' if pad == 1 and stride == 1 else 'valid'
 
-            # Setting weights.
-            # Darknet serializes convolutional weights as:
+            # 设置权重
+            # Darknet  卷积权重顺序是:
             # [bias/beta, [gamma, mean, variance], conv_weights]
             prev_layer_shape = K.int_shape(prev_layer)
 
+            # 通过读取到cfg值设置weight shape
             weights_shape = (size, size, prev_layer_shape[-1], filters)
             darknet_w_shape = (filters, weights_shape[2], size, size)
             weights_size = np.product(weights_shape)
@@ -109,9 +115,9 @@ def main():
 
                 bn_weight_list = [
                     bn_weights[0],  # scale gamma
-                    conv_bias,  # shift beta
+                    conv_bias,      # shift beta
                     bn_weights[1],  # running mean
-                    bn_weights[2]  # running var
+                    bn_weights[2]   # running var
                 ]
 
             conv_weights = np.ndarray(
@@ -121,41 +127,41 @@ def main():
 
             count += weights_size
 
-            # DarkNet conv_weights are serialized Caffe-style:
+            # DarkNet conv_weights是Caffe和Pytorch的顺序
             # (out_dim, in_dim, height, width)
-            # We would like to set these to Tensorflow order:
+            # 把他改成Tensorflow的样式:
             # (height, width, in_dim, out_dim)
             conv_weights = np.transpose(conv_weights, [2, 3, 1, 0])
             conv_weights = [conv_weights] if batch_normalize else [conv_weights, conv_bias]
 
-            # Handle activation.
-            act_fn = None
-            if activation == 'leaky':
-                pass  # Add advanced activation later.
-            elif activation != 'linear':
-                raise ValueError('Unknown activation function `{}` in section {}'.format(activation, section))
-
             # Create Conv2D layer
             if stride > 1:
-                # Darknet uses left and top padding instead of 'same' mode
+                # Darknet只填充左上，而不是采用Tensorflow的'same'的方式
                 prev_layer = ZeroPadding2D(((1, 0), (1, 0)))(prev_layer)
+
             conv_layer = (Conv2D(
                 filters, (size, size),
                 strides=(stride, stride),
                 kernel_regularizer=l2(weight_decay),
                 use_bias=not batch_normalize,
                 weights=conv_weights,
-                activation=act_fn,
+                activation=None,
                 padding=padding))(prev_layer)
 
             if batch_normalize:
                 conv_layer = (BatchNormalization(weights=bn_weight_list))(conv_layer)
+
             prev_layer = conv_layer
 
+            # shortcut的activation是linear，也就是没有激活函数
             if activation == 'linear':
                 all_layers.append(prev_layer)
             elif activation == 'leaky':
                 act_layer = LeakyReLU(alpha=0.1)(prev_layer)
+                prev_layer = act_layer
+                all_layers.append(act_layer)
+            elif activation == 'mish':
+                act_layer = Mish()(prev_layer)
                 prev_layer = act_layer
                 all_layers.append(act_layer)
 
@@ -227,10 +233,6 @@ def main():
 
     if remaining_weights > 0:
         print('Warning: {} unused weights'.format(remaining_weights))
-
-    # if plot_model:
-    #     plot(model, to_file='{}.png'.format(output_root), show_shapes=True)
-    #     print('Saved model plot to {}.png'.format(output_root))
 
 
 if __name__ == '__main__':

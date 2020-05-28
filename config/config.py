@@ -10,20 +10,22 @@ import numpy as np
 annotation_path = "./config/2012_train.txt"
 log_dir = r".\logs\summary"
 # 预训练模型的位置
-pretrain_weights_path = r"D:\Python_Code\YOLOv4\config\convert_yolov4.h5"
+pretrain_weights_path = "D:/Python_Code/YOLOv4/config/yolov4_weight.h5"
 # 模型路径
-model_path = r"D:\Python_Code\YOLOv4\logs\model\yolov4.h5"
-best_model = r"D:\Python_Code\YOLOv4\logs\model\best_model.h5"
+model_path = "D:/Python_Code/YOLOv4/logs/model/yolov4.h5"
+best_model = "D:/Python_Code/YOLOv4/logs/model/best_model.h5"
 
 # 模型相关参数
 num_bbox = 3
 num_classes = 20
 input_shape = (416, 416)
-learn_rating = 3e-4
+learning_rate = 1e-3
 batch_size = 4
 epochs = 50
 
-pretrain = False
+# 余弦退火的学习率
+cosine_scheduler = True
+pretrain = True
 fine_tune = False
 train_mode = "fit"
 

@@ -6,8 +6,8 @@
 # @Brief:
 
 
-from nets.loss import YoloLoss
-from nets.model import yolo4_body
+from nets.loss import YoloLoss, WarmUpCosineDecayScheduler
+from nets.model import yolo4_body, Mish
 import config.config as cfg
 from core.dataReader import ReadYolo4Data
 
@@ -46,65 +46,57 @@ def main():
     if cfg.train_mode == "eager":
         pass
     else:
-        # 创建summary
-        writer = tf.summary.create_file_writer(logdir=cfg.log_dir + '/loss')
-
-        optimizer = Adam(learning_rate=cfg.learn_rating)
-        yolo_loss = [YoloLoss(cfg.anchors[mask],
-                              label_smoothing=cfg.label_smoothing,
-                              summary_writer=writer,
-                              optimizer=optimizer) for mask in cfg.anchor_masks]
-
-        train_by_fit(optimizer, yolo_loss, train_datasets, valid_datasets, train_steps, valid_steps)
+        train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps)
 
 
-def create_model():
-    """
-    创建模型，方便MirroredStrategy的操作
-    :return: Model
-    """
-    # 是否预训练
-    if cfg.pretrain:
-        print('Load weights {}.'.format(cfg.pretrain_weights_path))
-        # 定义模型
-        pretrain_model = tf.keras.models.load_model(cfg.pretrain_weights_path, compile=False)
-        pretrain_model.trainable = False
-        input_image = pretrain_model.input
-        feat_52x52, feat_26x26, feat_13x13 = pretrain_model.layers[92].output, \
-                                             pretrain_model.layers[152].output, \
-                                             pretrain_model.layers[184].output
-        model = yolo4_body([input_image, feat_52x52, feat_26x26, feat_13x13])
-    else:
-        print("Train all layers.")
-        model = yolo4_body()
-
-    return model
-
-
-def train_by_fit(optimizer, loss, train_datasets, valid_datasets, train_steps, valid_steps):
+def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
     """
     使用fit方式训练，可以知道训练完的时间，以及更规范的添加callbacks参数
-    :param optimizer: 优化器
-    :param loss: 自定义的loss function
     :param train_datasets: 以tf.data封装好的训练集数据
     :param valid_datasets: 验证集数据
     :param train_steps: 迭代一个epoch的轮次
     :param valid_steps: 同上
     :return: None
     """
+    # 最大学习率
+    learning_rate_base = cfg.learning_rate
+    if cfg.cosine_scheduler:
+        # 预热期
+        warmup_epoch = int(cfg.epochs * 0.2)
+        # 总共的步长
+        total_steps = int(cfg.epochs * train_steps)
+        # 预热步长
+        warmup_steps = int(warmup_epoch * train_steps)
+        # 学习率
+        reduce_lr = WarmUpCosineDecayScheduler(learning_rate_base=learning_rate_base,
+                                               total_steps=total_steps,
+                                               warmup_learning_rate=learning_rate_base/10,
+                                               warmup_steps=warmup_steps,
+                                               hold_base_rate_steps=train_steps,
+                                               min_learn_rate=learning_rate_base/1000)
+        optimizer = Adam()
+    else:
+        optimizer = Adam(learning_rate_base)
+
     callbacks = [
-        ReduceLROnPlateau(verbose=1),
         EarlyStopping(patience=10, verbose=1),
         TensorBoard(log_dir=cfg.log_dir),
-        ModelCheckpoint(cfg.log_dir, save_best_only=True, save_weights_only=True)
+        ModelCheckpoint(cfg.best_model, save_best_only=True, save_weights_only=True),
+        reduce_lr if cfg.cosine_scheduler else ReduceLROnPlateau(verbose=1)
     ]
+
+    # 创建summary，收集具体的loss信息
+    writer = tf.summary.create_file_writer(logdir=cfg.log_dir + '/loss')
+    yolo_loss = [YoloLoss(cfg.anchors[mask],
+                          label_smoothing=cfg.label_smoothing,
+                          summary_writer=writer,
+                          optimizer=optimizer) for mask in cfg.anchor_masks]
 
     strategy = tf.distribute.MirroredStrategy()
     with strategy.scope():
-        model = create_model()
-        model.compile(optimizer=optimizer, loss=loss)
+        model = yolo4_body()
+        model.compile(optimizer=optimizer, loss=yolo_loss)
 
-    # initial_epoch用于恢复之前的训练
     model.fit(train_datasets,
               steps_per_epoch=max(1, train_steps),
               validation_data=valid_datasets,
@@ -116,12 +108,40 @@ def train_by_fit(optimizer, loss, train_datasets, valid_datasets, train_steps, v
     model.save_weights(cfg.model_path)
 
     if cfg.fine_tune:
+        cfg.batch_size = 2
+        # 最大学习率
+        learning_rate_base = cfg.learning_rate / 10
+
+        if Cosine_scheduler:
+            # 预热期
+            warmup_epoch = int(cfg.epochs * 0.2)
+            # 总共的步长
+            total_steps = int(cfg.epochs * train_steps)
+            # 预热步长
+            warmup_steps = int(warmup_epoch * train_steps)
+            # 学习率
+            reduce_lr = WarmUpCosineDecayScheduler(learning_rate_base=learning_rate_base,
+                                                   total_steps=total_steps,
+                                                   warmup_learning_rate=learning_rate_base/10,
+                                                   warmup_steps=warmup_steps,
+                                                   hold_base_rate_steps=train_steps // 2,
+                                                   min_learn_rate=learning_rate_base/100)
+            optimizer = Adam()
+        else:
+            optimizer = Adam(learning_rate_base)
+
+        callbacks = [
+            EarlyStopping(patience=10, verbose=1),
+            TensorBoard(log_dir=cfg.log_dir),
+            ModelCheckpoint(cfg.best_model, save_best_only=True, save_weights_only=True),
+            reduce_lr if cfg.cosine_scheduler else ReduceLROnPlateau(verbose=1)
+        ]
         with strategy.scope():
             print("Unfreeze all of the layers.")
             for i in range(len(model.layers)):
                 model.layers[i].trainable = True
 
-            model.compile(optimizer=Adam(learning_rate=cfg.learn_rating / 10), loss=loss)
+            model.compile(optimizer=optimizer, loss=yolo_loss)
 
         model.fit(train_datasets,
                   steps_per_epoch=max(1, train_steps),

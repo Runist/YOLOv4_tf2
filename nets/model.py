@@ -69,7 +69,8 @@ def DarknetConv2D_BN_Mish(inputs, num_filter, kernel_size, strides=(1, 1), bn=Tr
 
 def DarknetConv2D_BN_Leaky(inputs, num_filter, kernel_size, strides=(1, 1), bn=True):
     """
-    卷积 + 批归一化 + leaky激活，因为大量用到这样的结构，所以这样写
+    卷积 + 批归一化 + leaky激活，因为大量用到这样的结构，
+    其中名字的管理比较麻烦，所以添加了函数内部变量
     :param inputs: 输入
     :param num_filter: 卷积个数
     :param kernel_size: 卷积核大小
@@ -77,16 +78,37 @@ def DarknetConv2D_BN_Leaky(inputs, num_filter, kernel_size, strides=(1, 1), bn=T
     :param bn: 是否使用批归一化
     :return: x
     """
+    if "conv2d" not in DarknetConv2D_BN_Leaky.__dict__ and cfg.pretrain:
+        DarknetConv2D_BN_Leaky.conv2d = 72
+
+    if "bn" not in DarknetConv2D_BN_Leaky.__dict__ and cfg.pretrain:
+        DarknetConv2D_BN_Leaky.bn = 72
+
     if strides == (1, 1) or strides == 1:
         padding = 'same'
     else:
         padding = 'valid'
 
+    if cfg.pretrain:
+        conv2d_name = "conv2d_{}".format(DarknetConv2D_BN_Leaky.conv2d)
+        DarknetConv2D_BN_Leaky.conv2d += 1
+    else:
+        conv2d_name = None
+
     x = Conv2D(num_filter, kernel_size=kernel_size,
                strides=strides, padding=padding,                        # 这里的参数是只l2求和之后所乘上的系数
-               use_bias=not bn, kernel_regularizer=l2(5e-4))(inputs)    # 只有添加正则化参数，才能调用model.losses方法
+               use_bias=not bn, kernel_regularizer=l2(5e-4),            # 只有添加正则化参数，才能调用model.losses方法
+               name=conv2d_name)(inputs)
+
     if bn:
-        x = BatchNormalization()(x)
+        if cfg.pretrain:
+            bn_name = "batch_normalization_{}".format(DarknetConv2D_BN_Leaky.bn)
+            DarknetConv2D_BN_Leaky.bn += 1
+        else:
+            bn_name = None
+
+        x = BatchNormalization(name=bn_name)(x)
+        # alpha是x < 0时，变量系数
         x = LeakyReLU(alpha=0.1)(x)
 
     return x
@@ -137,15 +159,15 @@ def darknet_body(inputs):
     x = resblock_body(x, 64, 1, False)
     x = resblock_body(x, 128, 2)
     x = resblock_body(x, 256, 8)
-    feat52x52 = x
+    feat_52x52 = x
 
     x = resblock_body(x, 512, 8)
-    feat26x26 = x
+    feat_26x26 = x
 
     x = resblock_body(x, 1024, 4)
-    feat13x13 = x
+    feat_13x13 = x
 
-    return feat52x52, feat26x26, feat13x13
+    return feat_52x52, feat_26x26, feat_13x13
 
 
 def make_last_layers(inputs, num_filter):
@@ -179,7 +201,7 @@ def SPP_net(inputs):
     maxpool1 = MaxPooling2D(pool_size=(13, 13), strides=(1, 1), padding='same')(inputs)
     maxpool2 = MaxPooling2D(pool_size=(9, 9), strides=(1, 1), padding='same')(inputs)
     maxpool3 = MaxPooling2D(pool_size=(5, 5), strides=(1, 1), padding='same')(inputs)
-    output = Concatenate()([maxpool1, maxpool2, maxpool3, inputs])
+    output = Concatenate(name="concatenate_5")([maxpool1, maxpool2, maxpool3, inputs])
 
     return output
 
@@ -206,11 +228,27 @@ def yolo4_body():
     """
     height, width = cfg.input_shape
     input_image = Input(shape=(height, width, 3), dtype='float32', name="input_1")  # [b, 416, 416, 3]
-    feat52x52, feat26x26, feat13x13 = darknet_body(input_image)
+    if cfg.pretrain:
+        print('Load weights {}.'.format(cfg.pretrain_weights_path))
+        # 加载模型
+        pretrain_model = tf.keras.models.load_model(cfg.pretrain_weights_path,
+                                                    custom_objects={'Mish': Mish},
+                                                    compile=False,)
+        pretrain_model.trainable = False
+        input_image = pretrain_model.input
+        # feat_52x52, feat_26x26, feat_13x13 = pretrain_model.layers[131].output, \
+        #                                      pretrain_model.layers[204].output, \
+        #                                      pretrain_model.layers[247].output
+        feat_52x52, feat_26x26, feat_13x13 = pretrain_model.get_layer("mish_37").output, \
+                                             pretrain_model.get_layer("mish_58").output, \
+                                             pretrain_model.get_layer("mish_71").output
+    else:
+        print("Train all layers.")
+        feat_52x52, feat_26x26, feat_13x13 = darknet_body(input_image)
 
     # 13x13 head
     # 三次卷积 + spp + 三次卷积
-    y13 = DarknetConv2D_BN_Leaky(feat13x13, 512, kernel_size=1)
+    y13 = DarknetConv2D_BN_Leaky(feat_13x13, 512, kernel_size=1)
     y13 = DarknetConv2D_BN_Leaky(y13, 1024, kernel_size=3)
     y13 = DarknetConv2D_BN_Leaky(y13, 512, kernel_size=1)
     y13 = SPP_net(y13)
@@ -220,26 +258,26 @@ def yolo4_body():
     y13_upsample = Conv2D_Upsample(y13, 256)
 
     # 26x26 head
-    y26 = DarknetConv2D_BN_Leaky(feat26x26, 256, kernel_size=1)
-    y26 = Concatenate()([y26, y13_upsample])
+    y26 = DarknetConv2D_BN_Leaky(feat_26x26, 256, kernel_size=1)
+    y26 = Concatenate(name="concatenate_6")([y26, y13_upsample])
     y26, _ = make_last_layers(y26, 256)     # TODO 到时候裁剪模型时就要把这里改一下
     y26_upsample = Conv2D_Upsample(y26, 128)
 
     # 52x52 head and output
-    y52 = DarknetConv2D_BN_Leaky(feat52x52, 128, (1, 1))
-    y52 = Concatenate()([y52, y26_upsample])
+    y52 = DarknetConv2D_BN_Leaky(feat_52x52, 128, (1, 1))
+    y52 = Concatenate(name="concatenate_7")([y52, y26_upsample])
     y52, output_52x52 = make_last_layers(y52, 128)
 
     # 26x26 output
-    y52_downsample = ZeroPadding2D(((1, 0), (1, 0)))(y52)
+    y52_downsample = ZeroPadding2D(((1, 0), (1, 0)), name="zero_padding2d_5")(y52)
     y52_downsample = DarknetConv2D_BN_Leaky(y52_downsample, 256, kernel_size=3, strides=(2, 2))
-    y26 = Concatenate()([y52_downsample, y26])
+    y26 = Concatenate(name="concatenate_8")([y52_downsample, y26])
     y26, output_26x26 = make_last_layers(y26, 256)
 
     # 13x13 output
-    y26_downsample = ZeroPadding2D(((1, 0), (1, 0)))(y26)
+    y26_downsample = ZeroPadding2D(((1, 0), (1, 0)), name="zero_padding2d_6")(y26)
     y26_downsample = DarknetConv2D_BN_Leaky(y26_downsample, 512, kernel_size=3, strides=(2, 2))
-    y13 = Concatenate()([y26_downsample, y13])
+    y13 = Concatenate(name="concatenate_9")([y26_downsample, y13])
     y13, output_13x13 = make_last_layers(y13, 512)
 
     # 这里output1、output2、output3的shape分别是52x52, 26x26, 13x13

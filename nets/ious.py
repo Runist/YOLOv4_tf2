@@ -39,7 +39,7 @@ def box_iou(b1, b2):
     return iou
 
 
-def box_ciou(b1, b2, just_iou=False):
+def box_ciou(b1, b2):
     """
     输入为：
     ----------
@@ -74,9 +74,6 @@ def box_ciou(b1, b2, just_iou=False):
     b2_area = b2_wh[..., 0] * b2_wh[..., 1]
     union_area = b1_area + b2_area - intersect_area
     iou = intersect_area / (union_area + 1e-7)
-
-    if just_iou:
-        return iou
 
     # 计算中心的差距
     center_distance = tf.reduce_sum(tf.square(b1_xy - b2_xy), axis=-1)
