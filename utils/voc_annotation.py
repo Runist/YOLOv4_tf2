@@ -3,7 +3,7 @@
 # @Author: Runist
 # @Time : 2020/5/8 10:48
 # @Software: PyCharm
-# @Brief: voc转换为yolo3读取的格式
+# @Brief: voc转换为yolo4读取的格式
 
 
 import xml.etree.ElementTree as ET

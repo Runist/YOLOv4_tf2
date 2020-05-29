@@ -34,7 +34,7 @@ def smooth_labels(y_true, e):
     return y_true * (1.0 - e) + e / k
 
 
-def YoloLoss(anchors, label_smoothing=0.1, summary_writer=None, optimizer=None):
+def YoloLoss(anchors, label_smooth=cfg.label_smooth, summary_writer=None, optimizer=None):
     def compute_loss(y_true, y_pred):
         # 1. 转换 y_pred -> bbox，预测置信度，各个分类的最后一层分数， 中心点坐标+宽高
         # y_pred: (batch_size, grid, grid, anchors * (x, y, w, h, obj, ...cls))
@@ -45,7 +45,7 @@ def YoloLoss(anchors, label_smoothing=0.1, summary_writer=None, optimizer=None):
         object_mask = y_true[..., 4:5]
         true_class = y_true[..., 5:]
 
-        if label_smoothing:
+        if label_smooth:
             true_class = smooth_labels(true_class, label_smoothing)
 
         # 乘上一个比例，让小框的在total loss中有更大的占比，这个系数是个超参数，如果小物体太多，可以适当调大
@@ -65,7 +65,7 @@ def YoloLoss(anchors, label_smoothing=0.1, summary_writer=None, optimizer=None):
 
             # 计算每个true_box对应的预测的iou最大的box
             best_iou = tf.reduce_max(iou, axis=-1)
-            # 计算出来的iou如果大于阈值则不被输入到loss计算中去，这个方法可以平横正负样本
+            # 计算出来的iou如果大于阈值则不被输入到loss计算中去，这个方法可以平衡正负样本
             ignore_mask = ignore_mask.write(b, tf.cast(best_iou < cfg.ignore_thresh, tf.float32))
             return b + 1, ignore_mask
 

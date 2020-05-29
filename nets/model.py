@@ -59,7 +59,8 @@ def DarknetConv2D_BN_Mish(inputs, num_filter, kernel_size, strides=(1, 1), bn=Tr
 
     x = Conv2D(num_filter, kernel_size=kernel_size,
                strides=strides, padding=padding,                        # 这里的参数是只l2求和之后所乘上的系数
-               use_bias=not bn, kernel_regularizer=l2(5e-4))(inputs)    # 只有添加正则化参数，才能调用model.losses方法
+               use_bias=not bn, kernel_regularizer=l2(5e-4),            # 只有添加正则化参数，才能调用model.losses方法
+               kernel_initializer=tf.random_normal_initializer(stddev=0.01))(inputs) # conv2d的标准差为0.01时，效果比较好
     if bn:
         x = BatchNormalization()(x)
         x = Mish()(x)
@@ -98,6 +99,7 @@ def DarknetConv2D_BN_Leaky(inputs, num_filter, kernel_size, strides=(1, 1), bn=T
     x = Conv2D(num_filter, kernel_size=kernel_size,
                strides=strides, padding=padding,                        # 这里的参数是只l2求和之后所乘上的系数
                use_bias=not bn, kernel_regularizer=l2(5e-4),            # 只有添加正则化参数，才能调用model.losses方法
+               kernel_initializer=tf.random_normal_initializer(stddev=0.01),
                name=conv2d_name)(inputs)
 
     if bn:

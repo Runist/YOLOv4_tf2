@@ -27,7 +27,7 @@ epochs = 50
 cosine_scheduler = True
 pretrain = True
 fine_tune = False
-train_mode = "fit"
+train_mode = "fit"  # eager(自己撰写训练方式，偏底层的方式) fit(用.fit训练)
 
 # iou重叠忽略阈值
 ignore_thresh = 0.5
@@ -35,14 +35,15 @@ iou_threshold = 0.3
 score_threshold = 0.5
 
 # 标签处理
-label_smoothing = 0.05
+label_smooth = 0.05
 
 # 数据处理
 valid_rate = 0.1
 shuffle_size = 1
-data_pretreatment = "mosaic"
+data_pretreatment = "mosaic"  # mosaic，random(单张图片的数据增强)，normal(不增强，只进行简单填充)
 
-
+# 特征层相对于输入图片缩放的倍数
+strides = [32, 16, 8]
 # 先验框信息
 anchors = np.array([(10, 13), (16, 30), (33, 23),
                     (30, 61), (62, 45), (59, 119),

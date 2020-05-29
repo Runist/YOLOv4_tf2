@@ -47,7 +47,9 @@ class ReadYolo4Data:
               第二个输入的参数，
               第三个是输出的类型
         """
-        if cfg.data_pretreatment == "mosaic":
+        n = np.random.randint(0, 10)
+        # 在使用Mosaic数据增强时，图片都是比较小且不是那么完整的，60%的使用mosaic, 其余40%使用不数据增强的形式
+        if cfg.data_pretreatment == "mosaic" and n < 6:
             self.max_boxes *= 4
             image, bbox = tf.py_function(self.get_random_data_with_mosaic, [annotation_line], [tf.float32, tf.int32])
         elif cfg.data_pretreatment == "random":
@@ -313,9 +315,17 @@ class ReadYolo4Data:
 
             box_data[:len(bbox)] = bbox
 
-        return image, box_data, imgs
+        return image, box_data
 
     def get_random_data_with_mosaic(self, annotation_line, hue=.1, sat=1.5, val=1.5):
+        """
+        mosaic数据增强方式
+        :param annotation_line: 4行图像信息数据
+        :param hue: 色域变换的h色调
+        :param sat: 饱和度S
+        :param val: 明度V
+        :return:
+        """
         input_height, input_width = self.input_shape
 
         min_offset_x = 0.45
@@ -481,28 +491,53 @@ class ReadYolo4Data:
         anchor_area = cfg.anchors[..., 0] * cfg.anchors[..., 1]
         # 计算最大的iou
         iou = intersect_area / (box_area + anchor_area - intersect_area)
-        best_anchors = np.argmax(iou, axis=-1)
 
-        # best_anchor是个list，label中标了几个框，他就计算出几个。
+        # 设定一个iou值，只要真实框与先验框的iou大于这个值就可以当作正样本输入进去。
+        # 因为负样本是不参与loss计算的，这就使得正负样本不均衡。放宽正样本的筛选条件，以提高正负样本的比例
+        iou_masks = iou > 0.3
+        written = [False] * len(iou)
+
+        # 这一层for遍历次数为：bbox个数（也就是遍历所有bbox）
+        for key, iou_mask in enumerate(iou_masks):
+            true_iou_mask = np.where(iou_mask)[0]
+            for value in true_iou_mask:
+                n = (cfg.num_bbox - 1) - value // cfg.num_bbox
+                # 保证value（先验框的索引）的在anchor_masks[n]中 且 iou 大于阈值
+                x = np.floor(true_boxes[key, 0] * grid_shapes[n][1]).astype('int32')
+                y = np.floor(true_boxes[key, 1] * grid_shapes[n][0]).astype('int32')
+
+                # 获取 先验框（二维列表）内索引，k就是对应的最好anchor
+                k = cfg.anchor_masks[n].index(value)
+                c = true_boxes[key, 4].astype('int32')
+
+                # 三个大小的特征层，逐一赋值
+                y_true[n][y, x, k, 0:4] = true_boxes[key, 0:4]
+                y_true[n][y, x, k, 4] = 1       # 置信度是1 因为含有目标
+                y_true[n][y, x, k, 5 + c] = 1   # 类别的one-hot编码，其他都为0
+
+                # 如果这个bbox已经写入真实框数据，那么就不必再在后续的best_anchor写入数据
+                written[key] = True
+
+        # 计算出最匹配的先验框
+        best_anchors = np.argmax(iou, axis=-1)
         # enumerate对他进行遍历，所以每个框都要计算合适的先验框
         for key, value in enumerate(best_anchors):
-            # 遍历三次（三种类型的框 对应 三个不同大小的特征层）
-            for n in range(cfg.num_bbox):
-                # 如果key（最优先验框的下表）
-                if value in cfg.anchor_masks[n]:
-                    # 真实框的x比例 * grid_shape的长度，一般np.array都是（y,x）的格式，floor向下取整
-                    # i = x * 13, i = y * 13 -- 放进特征层对应的grid里
-                    i = np.floor(true_boxes[key, 0] * grid_shapes[n][1]).astype('int32')
-                    j = np.floor(true_boxes[key, 1] * grid_shapes[n][0]).astype('int32')
+            n = (cfg.num_bbox - 1) - value // cfg.num_bbox
+            # 如果没有写入，就写入最匹配的anchor
+            if not written[key]:
+                # 真实框的x比例 * grid_shape的长度，一般np.array都是（y,x）的格式，floor向下取整
+                # x = x * 13, y = y * 13 -- 放进特征层对应的grid里
+                x = np.floor(true_boxes[key, 0] * grid_shapes[n][1]).astype('int32')
+                y = np.floor(true_boxes[key, 1] * grid_shapes[n][0]).astype('int32')
 
-                    # 获取 先验框（二维列表）内索引
-                    k = cfg.anchor_masks[n].index(value)
-                    c = true_boxes[key, 4].astype('int32')
+                # 获取 先验框（二维列表）内索引，k就是对应的最好anchor
+                k = cfg.anchor_masks[n].index(value)
+                c = true_boxes[key, 4].astype('int32')
 
-                    # 三个大小的特征层， 逐一赋值
-                    y_true[n][j, i, k, 0:4] = true_boxes[key, 0:4]
-                    y_true[n][j, i, k, 4] = 1  # 置信度是1 因为含有目标
-                    y_true[n][j, i, k, 5 + c] = 1  # 类别的one-hot编码，其他都为0
+                # 三个大小的特征层，逐一赋值
+                y_true[n][y, x, k, 0:4] = true_boxes[key, 0:4]
+                y_true[n][y, x, k, 4] = 1       # 置信度是1 因为含有目标
+                y_true[n][y, x, k, 5 + c] = 1   # 类别的one-hot编码，其他都为0
 
         return y_true
 
@@ -540,12 +575,13 @@ class ReadYolo4Data:
 
 if __name__ == '__main__':
     reader = ReadYolo4Data("../config/2012_train.txt", cfg.input_shape, cfg.batch_size)
-    # train, valid = reader.read_data_and_split_data()
+    train, valid = reader.read_data_and_split_data()
     # train_datasets = reader.make_datasets(train)
+    # reader.parse(train[1])
+
     # img = tf.image.convert_image_dtype(img[3], tf.uint8, saturate=True)
     # img = tf.image.encode_jpeg(img)
     # tf.io.write_file("test.jpg", img)
-
 
 
 

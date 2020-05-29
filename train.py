@@ -112,7 +112,7 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
         # 最大学习率
         learning_rate_base = cfg.learning_rate / 10
 
-        if Cosine_scheduler:
+        if cfg.cosine_scheduler:
             # 预热期
             warmup_epoch = int(cfg.epochs * 0.2)
             # 总共的步长
