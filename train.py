@@ -88,7 +88,7 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
     # 创建summary，收集具体的loss信息
     writer = tf.summary.create_file_writer(logdir=cfg.log_dir + '/loss')
     yolo_loss = [YoloLoss(cfg.anchors[mask],
-                          label_smoothing=cfg.label_smoothing,
+                          label_smooth=cfg.label_smooth,
                           summary_writer=writer,
                           optimizer=optimizer) for mask in cfg.anchor_masks]
 

@@ -46,7 +46,7 @@ def YoloLoss(anchors, label_smooth=cfg.label_smooth, summary_writer=None, optimi
         true_class = y_true[..., 5:]
 
         if label_smooth:
-            true_class = smooth_labels(true_class, label_smoothing)
+            true_class = smooth_labels(true_class, label_smooth)
 
         # 乘上一个比例，让小框的在total loss中有更大的占比，这个系数是个超参数，如果小物体太多，可以适当调大
         box_loss_scale = 2 - y_true[..., 2:3] * y_true[..., 3:4]
