@@ -3,11 +3,11 @@
 # @Author: Runist
 # @Time : 2020/5/21 17:11
 # @Software: PyCharm
-# @Brief:
+# @Brief: Yolov4训练启动脚本
 
 
 from nets.loss import YoloLoss, WarmUpCosineDecayScheduler
-from nets.model import yolo4_body, Mish
+from nets.model import yolo4_body
 import config.config as cfg
 from core.dataReader import ReadYolo4Data
 
@@ -108,7 +108,7 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
     model.save_weights(cfg.model_path)
 
     if cfg.fine_tune:
-        cfg.batch_size = 2
+        cfg.batch_size = 8
         # 最大学习率
         learning_rate_base = cfg.learning_rate / 10
 

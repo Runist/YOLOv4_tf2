@@ -7,7 +7,7 @@
 import numpy as np
 
 # 相关路径信息
-annotation_path = "./config/2012_train.txt"
+annotation_path = "./config/mask_train.txt"
 log_dir = r".\logs\summary"
 # 预训练模型的位置
 pretrain_weights_path = "D:/Python_Code/YOLOv4/config/yolov4_weight.h5"
@@ -15,12 +15,15 @@ pretrain_weights_path = "D:/Python_Code/YOLOv4/config/yolov4_weight.h5"
 model_path = "D:/Python_Code/YOLOv4/logs/model/yolov4.h5"
 best_model = "D:/Python_Code/YOLOv4/logs/model/best_model.h5"
 
+# 获得分类名
+class_names = ['with_mask', 'without_mask']
+
 # 模型相关参数
 num_bbox = 3
-num_classes = 20
+num_classes = len(class_names)
 input_shape = (416, 416)
 learning_rate = 1e-3
-batch_size = 4
+batch_size = 2
 epochs = 50
 
 # 余弦退火的学习率
@@ -45,16 +48,10 @@ data_pretreatment = "mosaic"  # mosaic，random(单张图片的数据增强)，n
 # 特征层相对于输入图片缩放的倍数
 strides = [32, 16, 8]
 # 先验框信息
-anchors = np.array([(10, 13), (16, 30), (33, 23),
-                    (30, 61), (62, 45), (59, 119),
-                    (116, 90), (156, 198), (373, 326)],
+anchors = np.array([(5, 9), (9, 16), (15, 26),
+                    (23, 38), (34, 53), (49, 80),
+                    (80, 119), (130, 179), (200, 243)],
                    np.float32)
-
-# 获得分类名
-class_names = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
-               'bus', 'car', 'cat', 'chair', 'cow',
-               'diningtable', 'dog', 'horse', 'motorbike', 'person',
-               'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor']
 
 # 先验框对应索引
 anchor_masks = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]

@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 import config.config as cfg
 import random
 import os
+import re
 
 
 def convert_annotation(year, image_id, list_file):
@@ -20,7 +21,7 @@ def convert_annotation(year, image_id, list_file):
     :param list_file: 写入的文件句柄
     :return: None
     """
-    in_file = open('D:/Python_Code/Tensorflow2.0/YOLOv3/VOCdevkit/VOC%s/Annotations/%s.xml' % (year, image_id))
+    in_file = open('D:/Python_Code/Mask_detection/nnotations/%s.xml' % (image_id))
     tree = ET.parse(in_file)
     root = tree.getroot()
 
@@ -45,12 +46,8 @@ def convert_annotation(year, image_id, list_file):
 
 if __name__ == '__main__':
     # VOC数据集的路径
-    xmlfilepath = 'D:/Python_Code/Tensorflow2.0/YOLOv3/VOCdevkit/VOC2012/Annotations'
-    temp_xml = os.listdir(xmlfilepath)
-    total_xml = []
-    for xml in temp_xml:
-        if xml.endswith(".xml"):
-            total_xml.append(xml)
+    xmlfilepath = 'D:/Python_Code/Mask_detection/MaskDetection/annotations'
+    total_xml = os.listdir(xmlfilepath)
 
     train_percent = 0.9
     test_percent = 1 - train_percent
@@ -69,7 +66,7 @@ if __name__ == '__main__':
 
     # 训练集和测试集分开
     for i in image_range:
-        name = total_xml[i][:-4]
+        name = re.findall(r'(.+?)\.', total_xml[i])[0]
         if i in train_num:
             train_ids.append(name)
         else:
@@ -80,7 +77,7 @@ if __name__ == '__main__':
     for key, value in image_ids.items():
         files = open('../config/{}.txt'.format(key), 'w')
         for image_id in value:
-            files.write('D:/Python_Code/Tensorflow2.0/YOLOv3/VOCdevkit/VOC{}/JPEGImages/{}.jpg'.format("2012", image_id))
+            files.write('D:/Python_Code/Mask_detection/MaskDetection/annotations/{}.jpg'.format(image_id))
             try:
                 convert_annotation(2012, image_id, files)
             except:

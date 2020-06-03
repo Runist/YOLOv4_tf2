@@ -10,9 +10,9 @@
 - [x] SPPNet
 - [x] PANet
 - [x] Mish activation
-- [ ] CosineAnnealing
+- [x] CosineAnnealing
 - [x] Label Smoothing
-- [ ] Focal loss
+- [x] Focal loss
 - [ ] Self-GAN
 
 

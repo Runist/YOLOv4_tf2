@@ -34,6 +34,20 @@ def smooth_labels(y_true, e):
     return y_true * (1.0 - e) + e / k
 
 
+def focal(y_true, y_pred, alpha=1, gamma=2):
+    """
+    何凯明提出的foacl loss有助于控制正负样本的战总loss的权重、可以按照难易程度分类样本
+    pt = p if y == 1 else (1 - p)
+    公式FL(pt) = -α(1 - pt)^γ * log(pt)
+    :param y_true:
+    :param y_pred:
+    :param alpha: α 范围是0 ~ 1
+    :param gamma: γ
+    :return:
+    """
+    return alpha * tf.pow(tf.abs(y_true - y_pred), gamma)
+
+
 def YoloLoss(anchors, label_smooth=cfg.label_smooth, summary_writer=None, optimizer=None):
     def compute_loss(y_true, y_pred):
         # 1. 转换 y_pred -> bbox，预测置信度，各个分类的最后一层分数， 中心点坐标+宽高
@@ -88,7 +102,11 @@ def YoloLoss(anchors, label_smooth=cfg.label_smooth, summary_writer=None, optimi
         # 如果该位置本来没有框，而且满足best_iou<ignore_thresh，则被认定为负样本
         # best_iou<ignore_thresh用于限制负样本数量
         object_conf = tf.nn.sigmoid_cross_entropy_with_logits(object_mask, pred_conf)
-        confidence_loss = object_mask * object_conf + (1 - object_mask) * object_conf * ignore_mask
+        # 计算focal loss
+        conf_focal = focal(object_mask, pred_conf)
+        # confidence_loss = object_mask * object_conf + (1 - object_mask) * object_conf * ignore_mask
+        confidence_loss = conf_focal * (object_mask * object_conf + (1 - object_mask) * object_conf * ignore_mask)
+
         # 预测类别损失
         class_loss = object_mask * tf.nn.sigmoid_cross_entropy_with_logits(true_class, pred_class)
 

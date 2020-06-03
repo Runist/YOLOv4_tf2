@@ -47,9 +47,9 @@ class ReadYolo4Data:
               第二个输入的参数，
               第三个是输出的类型
         """
-        n = np.random.randint(0, 10)
         # 在使用Mosaic数据增强时，图片都是比较小且不是那么完整的，60%的使用mosaic, 其余40%使用不数据增强的形式
-        if cfg.data_pretreatment == "mosaic" and n < 6:
+        if cfg.data_pretreatment == "mosaic":
+            # n = np.random.randint(0, 10)
             self.max_boxes *= 4
             image, bbox = tf.py_function(self.get_random_data_with_mosaic, [annotation_line], [tf.float32, tf.int32])
         elif cfg.data_pretreatment == "random":
@@ -62,9 +62,9 @@ class ReadYolo4Data:
         y_true_13, y_true_26, y_true_52 = tf.py_function(self.process_true_bbox, [bbox],
                                                          [tf.float32, tf.float32, tf.float32])
         h, w = self.input_shape
-        y_true_13.set_shape([h // 32, w // 32, 3, 25])
-        y_true_26.set_shape([h // 16, w // 16, 3, 25])
-        y_true_52.set_shape([h // 8, w // 8, 3, 25])
+        y_true_13.set_shape([h // 32, w // 32, 3, 5 + cfg.num_classes])
+        y_true_26.set_shape([h // 16, w // 16, 3, 5 + cfg.num_classes])
+        y_true_52.set_shape([h // 8, w // 8, 3, 5 + cfg.num_classes])
         box_data = y_true_13, y_true_26, y_true_52
 
         image.set_shape([h, w, 3])
@@ -545,17 +545,17 @@ class ReadYolo4Data:
         """
         用tf.data的方式读取数据，以提高gpu使用率
         :param annotation: 数据行[image_path, [x,y,w,h,class ...]]
-        :param mode: 训练集or验证集
+        :param mode: 训练集or验证集tf.data运行一次
         :return: 数据集
         """
         # 这是GPU读取方式
-        # load train dataset
         dataset = tf.data.Dataset.from_tensor_slices(annotation)
-        # 如果使用mosaic数据增强的方式，要先将4个路径合成一条数据，先传入
-        if cfg.data_pretreatment == "mosaic" and mode == 'train':
-            dataset = dataset.repeat().batch(4)
 
         if mode == "train":
+            # 如果使用mosaic数据增强的方式，要先将4个路径合成一条数据，先传入
+            if cfg.data_pretreatment == "mosaic":
+                dataset = dataset.repeat().batch(4)
+
             # map的作用就是根据定义的 函数，对整个数据集都进行这样的操作
             # 而不用自己写一个for循环，如：可以自己定义一个归一化操作，然后用.map方法都归一化
             dataset = dataset.map(self.parse, num_parallel_calls=tf.data.experimental.AUTOTUNE)
