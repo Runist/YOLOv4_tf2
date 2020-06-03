@@ -13,15 +13,16 @@ import os
 import re
 
 
-def convert_annotation(year, image_id, list_file):
+def convert_annotation(year, image, list_file):
     """
     把单个xml转换成annotation格式
     :param year: 图片的年份
-    :param image_id: 图片id
+    :param image: 图片id
     :param list_file: 写入的文件句柄
     :return: None
     """
-    in_file = open('D:/Python_Code/Mask_detection/nnotations/%s.xml' % (image_id))
+    image_id = re.findall(r'(.+?)\.', image)[0]
+    in_file = open('D:/Python_Code/Mask_detection/MaskDetection/annotations/%s.xml' % (image_id))
     tree = ET.parse(in_file)
     root = tree.getroot()
 
@@ -46,8 +47,11 @@ def convert_annotation(year, image_id, list_file):
 
 if __name__ == '__main__':
     # VOC数据集的路径
-    xmlfilepath = 'D:/Python_Code/Mask_detection/MaskDetection/annotations'
-    total_xml = os.listdir(xmlfilepath)
+    xml_path = 'D:/Python_Code/Mask_detection/MaskDetection/annotations'
+    image_path = 'D:/Python_Code/Mask_detection/MaskDetection/images'
+
+    total_xml = os.listdir(xml_path)
+    total_img = os.listdir(image_path)
 
     train_percent = 0.9
     test_percent = 1 - train_percent
@@ -66,7 +70,8 @@ if __name__ == '__main__':
 
     # 训练集和测试集分开
     for i in image_range:
-        name = re.findall(r'(.+?)\.', total_xml[i])[0]
+        name = total_img[i]
+
         if i in train_num:
             train_ids.append(name)
         else:
@@ -76,11 +81,9 @@ if __name__ == '__main__':
     image_ids = {"train": train_ids, "test": test_ids}
     for key, value in image_ids.items():
         files = open('../config/{}.txt'.format(key), 'w')
-        for image_id in value:
-            files.write('D:/Python_Code/Mask_detection/MaskDetection/annotations/{}.jpg'.format(image_id))
-            try:
-                convert_annotation(2012, image_id, files)
-            except:
-                pass
+        for image in value:
+            files.write('D:/Python_Code/Mask_detection/MaskDetection/images/{}'.format(image))
+            convert_annotation(2012, image, files)
+
             files.write('\n')
         files.close()
