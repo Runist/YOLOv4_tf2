@@ -62,7 +62,7 @@ def DarknetConv2D_BN_Mish(inputs, num_filter, kernel_size, strides=(1, 1), bn=Tr
                use_bias=not bn, kernel_regularizer=l2(5e-4),            # 只有添加正则化参数，才能调用model.losses方法
                kernel_initializer=tf.random_normal_initializer(stddev=0.01))(inputs) # conv2d的标准差为0.01时，效果比较好
     if bn:
-        x = BatchNormalization()(x)
+        x = BatchNormalization()(x, training=cfg.training)
         x = Mish()(x)
 
     return x
@@ -109,7 +109,7 @@ def DarknetConv2D_BN_Leaky(inputs, num_filter, kernel_size, strides=(1, 1), bn=T
         else:
             bn_name = None
 
-        x = BatchNormalization(name=bn_name)(x)
+        x = BatchNormalization(name=bn_name)(x, training=cfg.training)
         # alpha是x < 0时，变量系数
         x = LeakyReLU(alpha=0.1)(x)
 
@@ -230,7 +230,7 @@ def yolo4_body():
     """
     height, width = cfg.input_shape
     input_image = Input(shape=(height, width, 3), dtype='float32', name="input_1")  # [b, 416, 416, 3]
-    if cfg.pretrain:
+    if cfg.pretrain and cfg.training:
         print('Load weights {}.'.format(cfg.pretrain_weights_path))
         # 加载模型
         pretrain_model = tf.keras.models.load_model(cfg.pretrain_weights_path,
@@ -245,7 +245,6 @@ def yolo4_body():
                                              pretrain_model.get_layer("mish_58").output, \
                                              pretrain_model.get_layer("mish_71").output
     else:
-        print("Train all layers.")
         feat_52x52, feat_26x26, feat_13x13 = darknet_body(input_image)
 
     # 13x13 head

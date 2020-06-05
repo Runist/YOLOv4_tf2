@@ -12,7 +12,7 @@ log_dir = r".\logs\summary"
 # 预训练模型的位置
 pretrain_weights_path = "D:/Python_Code/YOLOv4/config/yolov4_weight.h5"
 # 模型路径
-model_path = "D:/Python_Code/YOLOv4/logs/model/yolov4.h5"
+model_path = "D:/Python_Code/YOLOv4/logs/model/mask_detection2.h5"
 best_model = "D:/Python_Code/YOLOv4/logs/model/best_model.h5"
 
 # 获得分类名
@@ -28,14 +28,15 @@ epochs = 50
 
 # 余弦退火的学习率
 cosine_scheduler = True
+training = False
 pretrain = True
 fine_tune = False
-train_mode = "fit"  # eager(自己撰写训练方式，偏底层的方式) fit(用.fit训练)
+train_mode = "eager"  # eager(自己撰写训练方式，偏底层的方式) fit(用.fit训练)
 
 # iou重叠忽略阈值
 ignore_thresh = 0.5
 iou_threshold = 0.3
-score_threshold = 0.5
+score_threshold = 0.55
 
 # 标签处理
 label_smooth = 0.05

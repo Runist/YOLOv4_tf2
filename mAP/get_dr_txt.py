@@ -4,19 +4,19 @@
 # @Time : 2020/5/8 14:27
 # @Software: PyCharm
 # @Brief: 获取预测框的数据，并转mAP的txt检测格式
-from predict.predict import Yolov3Predict
+from predict.predict import Yolov4Predict
 from PIL import Image
 import config.config as cfg
 import os
 
 
-class YOLOmAP(Yolov3Predict):
+class YOLOmAP(Yolov4Predict):
     def __init__(self, model_path):
         super().__init__(model_path)
         self.score = 0.05
         self.load_model()
 
-    def detect_image(self, image, image_id):
+    def detect_single_image(self, image, image_id):
         f = open("./input/detection-results/" + image_id + ".txt", "w")
 
         # 读取预测结果
@@ -52,7 +52,7 @@ if __name__ == '__main__':
         # image = Image.open(image_path)
         # 开启后在之后计算mAP可以可视化
         # image.save("./input/images-optional/"+image_id+".jpg")
-        yolo.detect_image(image, image_id)
+        yolo.detect_single_image(image, image_id)
         print(image_id, " done!")
 
     print("Conversion completed!")
