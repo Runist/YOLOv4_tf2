@@ -104,7 +104,6 @@ def train_by_eager(train_datasets, valid_datasets, train_steps, valid_steps):
                 # yolo_loss、label、output都是3个特征层的数据，通过for 拆包之后，一个loss_fn就是yolo_loss中一个特征层
                 # 然后逐一计算,
                 for output, label, loss_fn in zip(outputs, labels, yolo_loss):
-                    print(output)
                     pred_loss.append(loss_fn(label, output))
 
                 # 总损失 = yolo损失 + 正则化损失
