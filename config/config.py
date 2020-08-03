@@ -12,7 +12,7 @@ log_dir = r".\logs\summary"
 # 预训练模型的位置
 pretrain_weights_path = "D:/Python_Code/YOLOv4/config/yolov4_weight.h5"
 # 模型路径
-model_path = "D:/Python_Code/YOLOv4/logs/model/mask_detection2.h5"
+model_path = "D:/Python_Code/YOLOv4/logs/model/best_model_mask.h5"
 best_model = "D:/Python_Code/YOLOv4/logs/model/best_model.h5"
 
 # 获得分类名

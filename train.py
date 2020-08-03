@@ -156,12 +156,12 @@ def train_by_eager(train_datasets, valid_datasets, train_steps, valid_steps):
         with summary_writer.as_default():
             tf.summary.scalar('train_loss', train_loss.result(), step=optimizer.iterations)
             tf.summary.scalar('valid_loss', valid_loss.result(), step=optimizer.iterations)
-            tf.summary.scalar('regularization_loss', regularization_loss.result(), step=optimizer.iterations)
+            tf.summary.scalar('regularization_loss', regularization_loss, step=optimizer.iterations)
 
         # 只保存最好模型
         if valid_loss.result() < best_test_loss:
             best_test_loss = valid_loss.result()
-            model.save_weights(cfg.model_path, save_format='tf')
+            model.save_weights(cfg.model_path)
 
         # EarlyStopping
         if epoch > 1 and history_loss[epoch - 2] - history_loss[epoch - 1] > min_delta:

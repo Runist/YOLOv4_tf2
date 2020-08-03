@@ -23,7 +23,7 @@ else:
     from predict.transform import parse_yolov4_output
 
 
-class Yolov3Predict(object):
+class Yolov4Predict(object):
 
     def __init__(self, model_path):
         self.class_names = cfg.class_names
@@ -154,9 +154,9 @@ class Yolov3Predict(object):
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-    img_path = "D:/Python_Code/Tensorflow2.0/YOLOv3/VOCdevkit/VOC2012/JPEGImages/2010_000063.jpg"
+    img_path = "D:/Python_Code/Mask_detection/MaskDetection/images/00202.jpg"
 
-    yolo = Yolov3Predict(cfg.model_path)
+    yolo = Yolov4Predict(cfg.model_path)
     yolo.load_model()
 
     if not os.path.exists(img_path):
