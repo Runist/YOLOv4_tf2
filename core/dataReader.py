@@ -53,7 +53,7 @@ class ReadYolo4Data:
             self.max_boxes *= 4
             image, bbox = tf.py_function(self.get_random_data_with_mosaic, [annotation_line], [tf.float32, tf.int32])
         elif cfg.data_pretreatment == "random":
-            # 先对图片进行尺度处理，再对box位置处理成yolov3的格式
+            # 先对图片进行尺度处理，再对box位置处理成yolov4的格式
             image, bbox = tf.py_function(self._get_random_data, [annotation_line], [tf.float32, tf.int32])
         else:
             image, bbox = tf.py_function(self._get_data, [annotation_line], [tf.float32, tf.int32])
@@ -566,6 +566,7 @@ class ReadYolo4Data:
             # prefetch官方的说法是可以在gpu训练模型的同时提前预处理下一批数据
             dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
         else:
+            # 验证集数据不需要增强
             cfg.data_pretreatment = 'normal'
             dataset = dataset.map(self.parse, num_parallel_calls=tf.data.experimental.AUTOTUNE)
             dataset = dataset.repeat().batch(self.batch_size).prefetch(self.batch_size)
