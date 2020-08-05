@@ -13,18 +13,18 @@ import os
 import re
 
 
-def convert_annotation(year, image, list_file):
+def convert_annotation(image):
     """
     把单个xml转换成annotation格式
-    :param year: 图片的年份
     :param image: 图片id
-    :param list_file: 写入的文件句柄
-    :return: None
+    :return: bbox: 先验框的坐标信息
     """
     image_id = re.findall(r'(.+?)\.', image)[0]
     in_file = open('D:/Python_Code/Mask_detection/MaskDetection/annotations/%s.xml' % (image_id))
     tree = ET.parse(in_file)
     root = tree.getroot()
+
+    bbox = ''
 
     for obj in root.iter('object'):
 
@@ -42,7 +42,9 @@ def convert_annotation(year, image, list_file):
              int(xmlbox.find('xmax').text),
              int(xmlbox.find('ymax').text))
 
-        list_file.write(" " + ",".join([str(a) for a in b]) + ',' + str(cls_id))
+        bbox += " " + ",".join([str(a) for a in b]) + ',' + str(cls_id)
+
+    return bbox
 
 
 if __name__ == '__main__':
@@ -82,8 +84,12 @@ if __name__ == '__main__':
     for key, value in image_ids.items():
         files = open('../config/{}.txt'.format(key), 'w')
         for image in value:
+            bbox = convert_annotation(image)
+            if len(bbox) == 0:
+                continue
+
             files.write('D:/Python_Code/Mask_detection/MaskDetection/images/{}'.format(image))
-            convert_annotation(2012, image, files)
+            files.write(bbox)
 
             files.write('\n')
         files.close()
