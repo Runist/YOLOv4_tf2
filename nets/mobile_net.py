@@ -315,8 +315,6 @@ def train_by_fit(model, train_datasets, valid_datasets, epochs, train_steps, val
         for _ in process_bar:
             images, labels = next(valid_datasets)
             test_step(images, labels, model)
-            if index + 1 == val_step_num:
-                break
 
         template = 'Epoch {}, Loss: {:.2f}, Accuracy: {:.2f}, Test Loss: {:.2f}, Test Accuracy: {:.2f}\n'
         print(template.format(epoch,
@@ -332,7 +330,7 @@ def train_by_fit(model, train_datasets, valid_datasets, epochs, train_steps, val
 
 if __name__ == '__main__':
     epochs = 50
-    batch_size = 32
+    batch_size = 2
     lr = 0.0001
 
     # 自定义损失、优化器、准确率
@@ -347,7 +345,7 @@ if __name__ == '__main__':
     test_accuracy = metrics.CategoricalAccuracy(name='test_accuracy')
 
     cfg.data_pretreatment = 'normal'
-    reader = ClassifierDataRead("../config/mask_train.txt", cfg.input_shape, batch_size)
+    reader = ClassifierDataRead("../config/train.txt", cfg.input_shape, batch_size)
     train_path, valid_path = reader.read_data_and_split_data()
     train_datasets = reader.make_datasets(train_path, "train")
     valid_datasets = reader.make_datasets(valid_path, "valid")
