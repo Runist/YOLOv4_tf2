@@ -113,10 +113,8 @@ def MobileNetV2(width, height, channel, num_classes, include_top=False):
     # ---2--- 第一层步距按照表格来,其他层步距为1
     x = invertedResidual(x, x.shape[-1], 32, 2, 6)
     x = invertedResidual(x, x.shape[-1], 32, 1, 6)
-    x = invertedResidual(x, x.shape[-1], 32, 1, 6)
     # ---3---
     x = invertedResidual(x, x.shape[-1], 64, 2, 6)
-    x = invertedResidual(x, x.shape[-1], 64, 1, 6)
     x = invertedResidual(x, x.shape[-1], 64, 1, 6)
     # ---4---
     x = invertedResidual(x, x.shape[-1], 128, 2, 6)
@@ -126,7 +124,7 @@ def MobileNetV2(width, height, channel, num_classes, include_top=False):
     x = invertedResidual(x, x.shape[-1], 256, 1, 6)
     feat_52x52 = x
     # ---6---
-    x = invertedResidual(x, x.shape[-1], 512, 2, 2)
+    x = invertedResidual(x, x.shape[-1], 512, 1, 2)
     x = invertedResidual(x, x.shape[-1], 512, 1, 2)
     feat_26x26 = x
     # ---7---
@@ -300,6 +298,9 @@ def train_by_fit(model, train_datasets, valid_datasets, epochs, train_steps, val
     train_datasets = iter(train_datasets)
     valid_datasets = iter(valid_datasets)
 
+    # 创建summary
+    summary_writer = tf.summary.create_file_writer(logdir=cfg.log_dir)
+
     for epoch in range(1, epochs + 1):
         train_loss.reset_states()       # clear history info
         train_accuracy.reset_states()   # clear history info
@@ -310,11 +311,15 @@ def train_by_fit(model, train_datasets, valid_datasets, epochs, train_steps, val
         for _ in process_bar:
             images, labels = next(train_datasets)
             train_step(images, labels, model)
+            process_bar.set_postfix({'train_loss': '{:.5f}'.format(train_loss.result()),
+                                     'val_acc': '{:.5f}'.format(train_accuracy.result())})
 
         process_bar = tqdm(range(valid_steps), ncols=100, desc="Epoch {}".format(epoch), unit="step")
         for _ in process_bar:
             images, labels = next(valid_datasets)
             test_step(images, labels, model)
+            process_bar.set_postfix({'val_loss': '{:.5f}'.format(test_loss.result()),
+                                     'valacc': '{:.5f}'.format(test_accuracy.result())})
 
         template = 'Epoch {}, Loss: {:.2f}, Accuracy: {:.2f}, Test Loss: {:.2f}, Test Accuracy: {:.2f}\n'
         print(template.format(epoch,
@@ -322,6 +327,13 @@ def train_by_fit(model, train_datasets, valid_datasets, epochs, train_steps, val
                               train_accuracy.result() * 100,
                               test_loss.result(),
                               test_accuracy.result() * 100))
+
+        # 保存到tensorboard里
+        with summary_writer.as_default():
+            tf.summary.scalar('train_loss', train_loss.result(), step=optimizer.iterations)
+            tf.summary.scalar('validation_loss', test_loss.result(), step=optimizer.iterations)
+            tf.summary.scalar('train_accuracy', train_accuracy.result(), step=optimizer.iterations)
+            tf.summary.scalar('validation_accuracy', test_accuracy.result(), step=optimizer.iterations)
 
         if test_loss.result() < best_test_loss:
             best_test_loss = test_loss.result()
