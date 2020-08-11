@@ -13,10 +13,25 @@ import config.config as cfg
 from core.dataReader import ReadYolo4Data
 
 import os
+import shutil
 from tqdm import tqdm
 import tensorflow as tf
 from tensorflow.keras import optimizers, metrics, callbacks
 from tensorflow.keras.optimizers.schedules import PolynomialDecay
+
+
+def remove_summary(path):
+    """
+    清除summary目录下原有的东西
+    :param path: summary路径
+    :return: None
+    """
+    for f in os.listdir(path):
+        file = os.path.join(path, f)
+        if os.path.isdir(file):
+            remove_summary(file)
+        else:
+            os.remove(file)
 
 
 def main():
@@ -36,8 +51,8 @@ def main():
     # 删除上次训练留下的summary文件
     if not os.path.exists(cfg.log_dir):
         os.mkdir(cfg.log_dir)
-    for file in os.listdir(cfg.log_dir):
-        os.remove(os.path.join(cfg.log_dir, file))
+    # 清除summary目录下原有的东西
+    remove_summary(cfg.log_dir)
 
     # 建立模型保存目录
     if not os.path.exists(os.path.split(cfg.model_path)[0]):
