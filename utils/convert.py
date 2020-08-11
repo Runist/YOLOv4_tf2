@@ -21,7 +21,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.regularizers import l2
 
 import config.config as cfg
-from nets.model import Mish
+from nets.yolo4 import Mish
 
 
 def unique_config_sections(config_file):

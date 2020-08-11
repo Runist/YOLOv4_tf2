@@ -16,7 +16,7 @@ from keras.models import load_model
 from keras.layers import Input
 
 
-from nets.model import yolo4_body
+from nets.csp_darknet import yolo4_body
 if __name__ == "__main__":
     from transform import parse_yolov4_output
 else:
@@ -36,7 +36,7 @@ class Yolov4Predict(object):
         加载模型
         :return:
         """
-        model = yolo4_body()
+        model = yolo4_body(cfg.input_shape)
         print("loading weights...")
         model.load_weights(self.model_path)
         self.model = model
@@ -133,14 +133,14 @@ class Yolov4Predict(object):
         """
         # 获取原图尺寸 和 网络输入尺寸
         image_w, image_h = image.size
-        w, h = cfg.input_shape
+        w, h, _ = cfg.input_shape
         scale = min(w / image_w, h / image_h)
         new_w = int(image_w * scale)
         new_h = int(image_h * scale)
 
         # 插值变换、填充图片
         image = image.resize((new_w, new_h), Image.BICUBIC)
-        new_image = Image.new('RGB', cfg.input_shape, (128, 128, 128))
+        new_image = Image.new('RGB', cfg.input_shape[:2], (128, 128, 128))
         new_image.paste(image, ((w - new_w) // 2, (h - new_h) // 2))
 
         # 归一化

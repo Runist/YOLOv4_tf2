@@ -5,8 +5,8 @@
 # @Software: PyCharm
 # @Brief: yolov4 的 loss计算
 
-from nets.ious import box_ciou, box_iou
-from nets.model import yolo4_head
+from core.ious import box_ciou, box_iou
+from nets.yolo4 import yolo4_head
 import config.config as cfg
 import tensorflow as tf
 import numpy as np

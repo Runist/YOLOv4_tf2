@@ -6,18 +6,17 @@
 # @Brief: Yolov4训练启动脚本
 
 
-from nets.loss import YoloLoss, WarmUpCosineDecayScheduler
-from nets.model import yolo4_body
+from core.loss import YoloLoss, WarmUpCosineDecayScheduler
+from nets.csp_darknet import yolo4_body
+from nets.tiny_csp_darknet import tiny_yolo4_body
 import config.config as cfg
 from core.dataReader import ReadYolo4Data
 
 import os
-import shutil
+from tqdm import tqdm
 import tensorflow as tf
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras import optimizers, metrics, callbacks
 from tensorflow.keras.optimizers.schedules import PolynomialDecay
-from tensorflow.keras.metrics import Mean
-from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping, TensorBoard, ModelCheckpoint
 
 
 def main():
@@ -27,21 +26,18 @@ def main():
             tf.config.experimental.set_memory_growth(gpu, True)
 
     # 读取数据
-    reader = ReadYolo4Data(cfg.annotation_path, cfg.input_shape, cfg.batch_size)
+    reader = ReadYolo4Data(cfg.annotation_path, cfg.input_shape[:2], cfg.batch_size)
     train, valid = reader.read_data_and_split_data()
     train_datasets = reader.make_datasets(train, "train")
     valid_datasets = reader.make_datasets(valid, "valid")
     train_steps = len(train) // cfg.batch_size
     valid_steps = len(valid) // cfg.batch_size
 
-    if os.path.exists(cfg.log_dir):
-        # 清除summary目录下原有的东西
-        for f in os.listdir(cfg.log_dir):
-            file = os.path.join(cfg.log_dir, f)
-            if isinstance(file, str):
-                os.remove(file)
-            else:
-                shutil.rmtree(file)
+    # 删除上次训练留下的summary文件
+    if not os.path.exists(cfg.log_dir):
+        os.mkdir(cfg.log_dir)
+    for file in os.listdir(cfg.log_dir):
+        os.remove(os.path.join(cfg.log_dir, file))
 
     # 建立模型保存目录
     if not os.path.exists(os.path.split(cfg.model_path)[0]):
@@ -56,11 +52,18 @@ def main():
 
 def train_by_eager(train_datasets, valid_datasets, train_steps, valid_steps):
     # 创建模型结构
-    model = yolo4_body()
+    if cfg.backbone == 'csp-darknet':
+        model = yolo4_body(cfg.input_shape)
+    elif cfg.backbone == 'tiny-csp-darknet':
+        model = tiny_yolo4_body(cfg.input_shape)
 
     # 定义模型评估指标
-    train_loss = Mean(name='train_loss')
-    valid_loss = Mean(name='valid_loss')
+    train_loss = metrics.Mean(name='train_loss')
+    valid_loss = metrics.Mean(name='valid_loss')
+
+    # 将数据集实例化成迭代器
+    train_datasets = iter(train_datasets)
+    valid_datasets = iter(valid_datasets)
 
     # 设置保存最好模型的指标
     best_test_loss = float('inf')
@@ -75,7 +78,7 @@ def train_by_eager(train_datasets, valid_datasets, train_steps, valid_steps):
     # 1、lr_fn是类似是一个函数，每次需要它来计算当前学习率都会调用它
     # 2、它具有一个内部计数器，每次调用apply_gradients，就会+1
     lr_fn = PolynomialDecay(cfg.learning_rate, cfg.epochs, cfg.learning_rate / 10, 2)
-    optimizer = Adam(learning_rate=lr_fn)
+    optimizer = optimizers.Adam(learning_rate=lr_fn)
 
     # 创建summary
     summary_writer = tf.summary.create_file_writer(logdir=cfg.log_dir)
@@ -90,11 +93,11 @@ def train_by_eager(train_datasets, valid_datasets, train_steps, valid_steps):
     for epoch in range(1, cfg.epochs + 1):
         train_loss.reset_states()
         valid_loss.reset_states()
-        step = 0
-        print("Epoch {}/{}".format(epoch, cfg.epochs))
 
         # 处理训练集数据
-        for batch, (images, labels) in enumerate(train_datasets.take(train_steps)):
+        process_bar = tqdm(range(train_steps), ncols=100, desc="Epoch {}".format(epoch), unit="step")
+        for _ in process_bar:
+            images, labels = next(train_datasets)
             with tf.GradientTape() as tape:
                 # 得到预测
                 outputs = model(images, training=True)
@@ -118,20 +121,19 @@ def train_by_eager(train_datasets, valid_datasets, train_steps, valid_steps):
 
             # 更新train_loss
             train_loss.update_state(total_train_loss)
-            # 输出训练过程
-            rate = (step + 1) / train_steps
-            a = "=" * int(rate * 30)
-            b = "." * int((1 - rate) * 30)
-            loss = train_loss.result().numpy()
 
-            print("\r{}/{} {:^3.0f}%[{}=>{}] - loss:{:.4f}"
-                  " - lbox_loss:{:.4f} - mbox_loss:{:.4f} - sbox_loss:{:.4f} - reg_loss:{:.4f}".
-                  format(batch, train_steps, int(rate * 100), a, b, loss,
-                         pred_loss[0], pred_loss[1], pred_loss[2], regularization_loss), end='')
-            step += 1
+            loss = train_loss.result().numpy()
+            process_bar.set_postfix({'loss': '{:.4f}'.format(loss),
+                                     'lbox_loss': '{:.4f}'.format(pred_loss[0]),
+                                     'mbox_loss': '{:.4f}'.format(pred_loss[1]),
+                                     'sbox_loss': '{:.4f}'.format(pred_loss[2]) if cfg.backbone == 'csp-backone' else None,
+                                     'reg_loss': '{:.4f}'.format(regularization_loss),
+                                     })
 
         # 计算验证集
-        for batch, (images, labels) in enumerate(valid_datasets.take(valid_steps)):
+        process_bar = tqdm(range(valid_steps), ncols=100, desc="Epoch {}".format(epoch), unit="step")
+        for _ in process_bar:
+            images, labels = next(valid_datasets)
             # 得到预测，不training
             outputs = model(images)
             regularization_loss = tf.reduce_sum(model.losses)
@@ -143,13 +145,14 @@ def train_by_eager(train_datasets, valid_datasets, train_steps, valid_steps):
 
             # 更新valid_loss
             valid_loss.update_state(total_valid_loss)
+            process_bar.set_postfix({'loss': '{:.4f}'.format(valid_loss.result().numpy()),
+                                     'lbox_loss': '{:.4f}'.format(pred_loss[0]),
+                                     'mbox_loss': '{:.4f}'.format(pred_loss[1]),
+                                     'sbox_loss': '{:.4f}'.format(pred_loss[2]),
+                                     'reg_loss': '{:.4f}'.format(regularization_loss),
+                                     })
 
-        print('\nLoss: {:.4f}, Test Loss: {:.4f}'
-              ' - lbox_loss:{:.4f} - mbox_loss:{:.4f} - sbox_loss:{:.4f} - reg_loss:{:.4f}\n'.
-              format(train_loss.result(), valid_loss.result(),
-                     pred_loss[0], pred_loss[1], pred_loss[2], regularization_loss))
-
-        # 保存loss，可以选择train的loss
+    # 保存loss，可以选择train的loss
         history_loss.append(valid_loss.result().numpy())
 
         # 保存到tensorboard里
@@ -199,27 +202,31 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
                                                warmup_steps=warmup_steps,
                                                hold_base_rate_steps=train_steps,
                                                min_learn_rate=learning_rate_base/1000)
-        optimizer = Adam()
+        optimizer = optimizers.Adam()
     else:
-        optimizer = Adam(learning_rate_base)
+        optimizer = optimizers.Adam(learning_rate_base)
 
-    callbacks = [
-        EarlyStopping(patience=10, verbose=1),
-        TensorBoard(log_dir=cfg.log_dir),
-        ModelCheckpoint(cfg.best_model, save_best_only=True, save_weights_only=True),
-        reduce_lr if cfg.cosine_scheduler else ReduceLROnPlateau(verbose=1)
+    cbk = [
+        callbacks.EarlyStopping(patience=10, verbose=1),
+        callbacks.TensorBoard(log_dir=cfg.log_dir),
+        callbacks.ModelCheckpoint(cfg.best_model, save_best_only=True, save_weights_only=True),
+        reduce_lr if cfg.cosine_scheduler else callbacks.ReduceLROnPlateau(verbose=1)
     ]
 
     # 创建summary，收集具体的loss信息
-    writer = tf.summary.create_file_writer(logdir=cfg.log_dir + '/loss')
+    summary_writer = tf.summary.create_file_writer(logdir=cfg.log_dir)
     yolo_loss = [YoloLoss(cfg.anchors[mask],
                           label_smooth=cfg.label_smooth,
-                          summary_writer=writer,
+                          summary_writer=summary_writer,
                           optimizer=optimizer) for mask in cfg.anchor_masks]
 
     strategy = tf.distribute.MirroredStrategy()
     with strategy.scope():
-        model = yolo4_body()
+        if cfg.backbone == 'csp-darknet':
+            model = yolo4_body(cfg.input_shape)
+        elif cfg.backbone == 'tiny-csp-darknet':
+            model = tiny_yolo4_body(cfg.input_shape)
+
         model.compile(optimizer=optimizer, loss=yolo_loss)
 
     model.fit(train_datasets,
@@ -228,7 +235,7 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
               validation_steps=max(1, valid_steps),
               epochs=cfg.epochs,
               initial_epoch=0,
-              callbacks=callbacks)
+              callbacks=cbk)
 
     model.save_weights(cfg.model_path)
 
@@ -251,15 +258,15 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
                                                    warmup_steps=warmup_steps,
                                                    hold_base_rate_steps=train_steps // 2,
                                                    min_learn_rate=learning_rate_base/100)
-            optimizer = Adam()
+            optimizer = optimizers.Adam()
         else:
-            optimizer = Adam(learning_rate_base)
+            optimizer = optimizers.Adam(learning_rate_base)
 
-        callbacks = [
-            EarlyStopping(patience=10, verbose=1),
-            TensorBoard(log_dir=cfg.log_dir),
-            ModelCheckpoint(cfg.best_model, save_best_only=True, save_weights_only=True),
-            reduce_lr if cfg.cosine_scheduler else ReduceLROnPlateau(verbose=1)
+        cbk = [
+            callbacks.EarlyStopping(patience=10, verbose=1),
+            callbacks.TensorBoard(log_dir=cfg.log_dir),
+            callbacks.ModelCheckpoint(cfg.best_model, save_best_only=True, save_weights_only=True),
+            reduce_lr if cfg.cosine_scheduler else callbacks.ReduceLROnPlateau(verbose=1)
         ]
         with strategy.scope():
             print("Unfreeze all of the layers.")
@@ -274,7 +281,7 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
                   validation_steps=max(1, valid_steps),
                   epochs=cfg.epochs*2,
                   initial_epoch=cfg.epochs + 1,
-                  callbacks=callbacks)
+                  callbacks=cbk)
 
         model.save_weights(cfg.model_path)
 

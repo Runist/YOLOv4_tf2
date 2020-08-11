@@ -119,7 +119,7 @@ def load_dataset(path):
 
 
 if __name__ == '__main__':
-    CLUSTERS = 9                    # 聚类数量，anchor数量
+    CLUSTERS = 6                    # 聚类数量，anchor数量
     INPUTDIM = cfg.input_shape[0]   # 输入网络大小
     ANNOTATIONS_PATH = "D:/Python_Code/Mask_detection/MaskDetection/annotations"     # xml文件所在文件夹
 

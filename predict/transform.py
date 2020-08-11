@@ -7,7 +7,7 @@
 
 import tensorflow as tf
 import config.config as cfg
-from nets.model import yolo4_head
+from nets.yolo4 import yolo4_head
 
 
 def parse_yolov4_output(yolo_outputs, image_shape, score_threshold, max_boxes=20):
@@ -22,7 +22,7 @@ def parse_yolov4_output(yolo_outputs, image_shape, score_threshold, max_boxes=20
     boxes = []
     box_scores = []
 
-    # 对三个尺度的输出获取每个预测box坐标和box的分数，score计算为 置信度 * 类别概率
+    # 对三个尺度的输出（tiny-yolo4是两个尺度）获取每个预测box坐标和box的分数，score计算为 置信度 * 类别概率
     for i in range(len(yolo_outputs)):
         mask_index = cfg.anchor_masks[i]
         _boxes, _box_scores = get_boxes_and_scores(yolo_outputs[i], cfg.anchors[mask_index], image_shape)
@@ -99,7 +99,7 @@ def correct_boxes(box_xy, box_wh, image_shape):
     box_hw = box_wh[..., ::-1]
 
     # 类型转换
-    input_shape = tf.cast(cfg.input_shape, tf.float32)
+    input_shape = tf.cast(cfg.input_shape[:2], tf.float32)
     image_shape = tf.cast(image_shape, tf.float32)
 
     # 送进网络的图片是正方形的，所以不够的地方会灰色补齐，那么此时，得出来的框是基于正方形的

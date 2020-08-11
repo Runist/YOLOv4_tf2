@@ -312,14 +312,14 @@ def train_by_fit(model, train_datasets, valid_datasets, epochs, train_steps, val
             images, labels = next(train_datasets)
             train_step(images, labels, model)
             process_bar.set_postfix({'train_loss': '{:.5f}'.format(train_loss.result()),
-                                     'val_acc': '{:.5f}'.format(train_accuracy.result())})
+                                     'train_acc': '{:.5f}'.format(train_accuracy.result())})
 
         process_bar = tqdm(range(valid_steps), ncols=100, desc="Epoch {}".format(epoch), unit="step")
         for _ in process_bar:
             images, labels = next(valid_datasets)
             test_step(images, labels, model)
             process_bar.set_postfix({'val_loss': '{:.5f}'.format(test_loss.result()),
-                                     'valacc': '{:.5f}'.format(test_accuracy.result())})
+                                     'val_acc': '{:.5f}'.format(test_accuracy.result())})
 
         template = 'Epoch {}, Loss: {:.2f}, Accuracy: {:.2f}, Test Loss: {:.2f}, Test Accuracy: {:.2f}\n'
         print(template.format(epoch,

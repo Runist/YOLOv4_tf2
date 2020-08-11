@@ -20,7 +20,7 @@ def convert_annotation(image):
     :return: bbox: 先验框的坐标信息
     """
     image_id = re.findall(r'(.+?)\.', image)[0]
-    in_file = open('D:/Python_Code/Mask_detection/MaskDetection/annotations/%s.xml' % (image_id))
+    in_file = open('D:/Python_Code/Mask_detection/MaskDetection/annotations/%s.xml' % image_id)
     tree = ET.parse(in_file)
     root = tree.getroot()
 
@@ -88,6 +88,7 @@ if __name__ == '__main__':
             if len(bbox) == 0:
                 continue
 
+            # 训练图片实际路径
             files.write('D:/Python_Code/Mask_detection/MaskDetection/images/{}'.format(image))
             files.write(bbox)
 

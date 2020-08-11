@@ -20,12 +20,22 @@ class ReadYolo4Data:
     """
 
     def __init__(self, data_path, input_shape, batch_size, max_boxes=20):
+        """
+        :param data_path: 图片-标签 对应关系的txt文本路径
+        :param input_shape: 输入层的宽高信息
+        :param batch_size:
+        :param max_boxes: 一张图最大检测预测框数量
+        """
         self.data_path = data_path
         self.input_shape = input_shape
         self.batch_size = batch_size
         self.max_boxes = max_boxes
 
     def read_data_and_split_data(self):
+        """
+        读取图片的路径信息，并按照比例分为训练集和测试集
+        :return:
+        """
         with open(self.data_path, "r") as f:
             files = f.readlines()
 
@@ -58,14 +68,24 @@ class ReadYolo4Data:
         else:
             image, bbox = tf.py_function(self._get_data, [annotation_line], [tf.float32, tf.int32])
 
-        # py_function没有解析List的返回值，所以要拆包 再合起来传出去
-        y_true_13, y_true_26, y_true_52 = tf.py_function(self.process_true_bbox, [bbox],
-                                                         [tf.float32, tf.float32, tf.float32])
         h, w = self.input_shape
-        y_true_13.set_shape([h // 32, w // 32, 3, 5 + cfg.num_classes])
-        y_true_26.set_shape([h // 16, w // 16, 3, 5 + cfg.num_classes])
-        y_true_52.set_shape([h // 8, w // 8, 3, 5 + cfg.num_classes])
-        box_data = y_true_13, y_true_26, y_true_52
+        if cfg.backbone == 'csp-darknet':
+            # py_function没有解析List的返回值，所以要拆包 再合起来传出去
+            y_true_13, y_true_26, y_true_52 = tf.py_function(self.process_true_bbox, [bbox],
+                                                             [tf.float32, tf.float32, tf.float32])
+
+            y_true_13.set_shape([h // 32, w // 32, len(cfg.anchor_masks[0]), 5 + cfg.num_classes])
+            y_true_26.set_shape([h // 16, w // 16, len(cfg.anchor_masks[0]), 5 + cfg.num_classes])
+            y_true_52.set_shape([h // 8, w // 8, len(cfg.anchor_masks[0]), 5 + cfg.num_classes])
+            box_data = y_true_13, y_true_26, y_true_52
+
+        elif cfg.backbone == 'tiny-csp-darknet':
+            y_true_13, y_true_26 = tf.py_function(self.process_true_bbox, [bbox],
+                                                  [tf.float32, tf.float32])
+
+            y_true_13.set_shape([h // 32, w // 32, len(cfg.anchor_masks[0]), 5 + cfg.num_classes])
+            y_true_26.set_shape([h // 16, w // 16, len(cfg.anchor_masks[0]), 5 + cfg.num_classes])
+            box_data = y_true_13, y_true_26
 
         image.set_shape([h, w, 3])
 
@@ -441,7 +461,6 @@ class ReadYolo4Data:
         :param box_data: 实际框的数据
         :return: 处理好后的 y_true
         """
-        # [anchors[mask] for mask in anchor_masks]
 
         # 维度(b, max_boxes, 5)还是一样的，只是换一下类型，换成float32
         true_boxes = np.array(box_data, dtype='float32')
@@ -458,9 +477,9 @@ class ReadYolo4Data:
         true_boxes[..., 2:4] = boxes_wh / input_shape
 
         # 生成3种特征大小的网格
-        grid_shapes = [input_shape // [32, 16, 8][i] for i in range(cfg.num_bbox)]
-        # 创建3个特征大小的全零矩阵，[(b, 13, 13, 3, 25), ... , ...]存在列表中
-        y_true = [np.zeros((grid_shapes[i][0], grid_shapes[i][1], cfg.num_bbox, 5 + cfg.num_classes),
+        grid_shapes = [input_shape // cfg.strides[i] for i in range(cfg.num_bbox)]
+        # 创建3个特征大小的全零矩阵，[(13, 13, 3, 25), ... , ...]存在列表中
+        y_true = [np.zeros((grid_shapes[i][0], grid_shapes[i][1], len(cfg.anchor_masks[i]), 5 + cfg.num_classes),
                            dtype='float32') for i in range(cfg.num_bbox)]
 
         # 计算哪个先验框比较符合 真实框的Gw,Gh 以最高的iou作为衡量标准
@@ -501,7 +520,8 @@ class ReadYolo4Data:
         for key, iou_mask in enumerate(iou_masks):
             true_iou_mask = np.where(iou_mask)[0]
             for value in true_iou_mask:
-                n = (cfg.num_bbox - 1) - value // cfg.num_bbox
+                n = (cfg.num_bbox - 1) - value // len(cfg.anchor_masks[0])
+
                 # 保证value（先验框的索引）的在anchor_masks[n]中 且 iou 大于阈值
                 x = np.floor(true_boxes[key, 0] * grid_shapes[n][1]).astype('int32')
                 y = np.floor(true_boxes[key, 1] * grid_shapes[n][0]).astype('int32')
@@ -518,11 +538,11 @@ class ReadYolo4Data:
                 # 如果这个bbox已经写入真实框数据，那么就不必再在后续的best_anchor写入数据
                 written[key] = True
 
-        # 计算出最匹配的先验框
+        # 如果前面根据iou筛选框，并没有合适的框，则这一步计算出最匹配iou的作为先验框
         best_anchors = np.argmax(iou, axis=-1)
         # enumerate对他进行遍历，所以每个框都要计算合适的先验框
         for key, value in enumerate(best_anchors):
-            n = (cfg.num_bbox - 1) - value // cfg.num_bbox
+            n = (cfg.num_bbox - 1) - value // len(cfg.anchor_masks[0])
             # 如果没有写入，就写入最匹配的anchor
             if not written[key]:
                 # 真实框的x比例 * grid_shape的长度，一般np.array都是（y,x）的格式，floor向下取整
@@ -575,7 +595,7 @@ class ReadYolo4Data:
 
 
 if __name__ == '__main__':
-    reader = ReadYolo4Data("../config/2012_train.txt", cfg.input_shape, cfg.batch_size)
+    reader = ReadYolo4Data("../config/train.txt", cfg.input_shape[:2], cfg.batch_size)
     train, valid = reader.read_data_and_split_data()
     # train_datasets = reader.make_datasets(train)
     # reader.parse(train[1])
