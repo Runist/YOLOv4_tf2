@@ -79,6 +79,7 @@ def yolo4_body(input_shape):
         pretrain_model = tf.keras.models.load_model(cfg.pretrain_weights_path,
                                                     custom_objects={'Mish': Mish},
                                                     compile=False,)
+        pretrain_model.summary()
         pretrain_model.trainable = False
         input_image = pretrain_model.input
         # feat_52x52, feat_26x26, feat_13x13 = pretrain_model.layers[131].output, \

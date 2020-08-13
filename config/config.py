@@ -10,9 +10,9 @@ import numpy as np
 annotation_path = "./config/train.txt"
 log_dir = r".\logs\summary"
 # 预训练模型的位置
-pretrain_weights_path = "D:/Python_Code/YOLOv4/config/yolov4_weight.h5"
+pretrain_weights_path = "D:/Python_Code/YOLOv4/config/yolov4_tiny_voc.h5"
 # 模型路径
-model_path = "D:/Python_Code/YOLOv4/logs/model/best_model_mask.h5"
+model_path = "D:/Python_Code/YOLOv4/logs/model/tiny_mask_detection.h5"
 best_model = "D:/Python_Code/YOLOv4/logs/model/best_model.h5"
 
 # 获得分类名
@@ -44,7 +44,7 @@ label_smooth = 0.05
 # 数据处理
 valid_rate = 0.1
 shuffle_size = 2048
-data_pretreatment = "mosaic"  # mosaic，random(单张图片的数据增强)，normal(不增强，只进行简单填充)
+data_pretreatment = "normal"  # mosaic，random(单张图片的数据增强)，normal(不增强，只进行简单填充)
 
 # 特征层相对于输入图片缩放的倍数
 strides = [32, 16, 8]

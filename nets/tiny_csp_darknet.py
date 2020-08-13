@@ -93,13 +93,13 @@ def tiny_yolo4_body(input_shape):
 
     # (13, 13, 512) -> (13, 13, 256)
     y13 = DarknetConv2D_BN_Leaky(feat2, 256, kernel_size=1)
-    y13 = DarknetConv2D_BN_Leaky(y13, 512, kernel_size=3)
+    output_13x13 = DarknetConv2D_BN_Leaky(y13, 512, kernel_size=3)
 
     # FPN特征融合
-    output_13x13 = DarknetConv2D_BN_Leaky(y13, len(cfg.anchor_masks[0]) * (cfg.num_classes+5), kernel_size=1, bn=False)
+    output_13x13 = DarknetConv2D_BN_Leaky(output_13x13, len(cfg.anchor_masks[0]) * (cfg.num_classes+5), kernel_size=1, bn=False)
 
     # Conv2D + UpSampling2D (13, 13, 256) -> (13, 13, 128)
-    y13_upsample = Conv2D_Upsample(output_13x13, 128)
+    y13_upsample = Conv2D_Upsample(y13, 128)
 
     # (26, 26, (128+256))
     y26 = layers.Concatenate()([feat1, y13_upsample])

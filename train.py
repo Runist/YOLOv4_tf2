@@ -163,7 +163,7 @@ def train_by_eager(train_datasets, valid_datasets, train_steps, valid_steps):
             process_bar.set_postfix({'loss': '{:.4f}'.format(valid_loss.result().numpy()),
                                      'lbox_loss': '{:.4f}'.format(pred_loss[0]),
                                      'mbox_loss': '{:.4f}'.format(pred_loss[1]),
-                                     'sbox_loss': '{:.4f}'.format(pred_loss[2]),
+                                     'sbox_loss': '{:.4f}'.format(pred_loss[2]) if cfg.backbone == 'csp-backone' else None,
                                      'reg_loss': '{:.4f}'.format(regularization_loss),
                                      })
 
@@ -241,6 +241,7 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
             model = yolo4_body(cfg.input_shape)
         elif cfg.backbone == 'tiny-csp-darknet':
             model = tiny_yolo4_body(cfg.input_shape)
+            model.load_weights(cfg.pretrain_weights_path)
 
         model.compile(optimizer=optimizer, loss=yolo_loss)
 

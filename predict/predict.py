@@ -17,6 +17,7 @@ from keras.layers import Input
 
 
 from nets.csp_darknet import yolo4_body
+from nets.tiny_csp_darknet import tiny_yolo4_body
 if __name__ == "__main__":
     from transform import parse_yolov4_output
 else:
@@ -36,8 +37,12 @@ class Yolov4Predict(object):
         加载模型
         :return:
         """
-        model = yolo4_body(cfg.input_shape)
+        if cfg.backbone == 'csp-darknet':
+            model = yolo4_body(cfg.input_shape)
+        elif cfg.backbone == 'tiny-csp-darknet':
+            model = tiny_yolo4_body(cfg.input_shape)
         print("loading weights...")
+
         model.load_weights(self.model_path)
         self.model = model
 
