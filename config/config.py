@@ -21,12 +21,12 @@ class_names = ['with_mask', 'without_mask']
 # 模型相关参数
 num_classes = len(class_names)
 input_shape = (416, 416, 3)
-learning_rate = 1e-3
-batch_size = 2
+learning_rate = 1e-5
+batch_size = 4
 epochs = 50
 
 # 余弦退火的学习率
-cosine_scheduler = True
+cosine_scheduler = False
 training = False
 pretrain = False
 fine_tune = False

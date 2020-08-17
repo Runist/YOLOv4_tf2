@@ -47,7 +47,7 @@ if __name__ == '__main__':
         frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
 
         fps = (fps + (1. / (time.time() - t1))) / 2
-        print("fps= %.2f" % fps)
+        print("fps= %.2f\n" % fps)
         # frame = cv.putText(frame, "fps= %.2f" % fps, (0, 40), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
         out.write(frame)

@@ -205,7 +205,7 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
     learning_rate_base = cfg.learning_rate
     if cfg.cosine_scheduler:
         # 预热期
-        warmup_epoch = int(cfg.epochs * 0.2)
+        warmup_epoch = int(cfg.epochs * 0.4)
         # 总共的步长
         total_steps = int(cfg.epochs * train_steps)
         # 预热步长
@@ -241,7 +241,6 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
             model = yolo4_body(cfg.input_shape)
         elif cfg.backbone == 'tiny-csp-darknet':
             model = tiny_yolo4_body(cfg.input_shape)
-            model.load_weights(cfg.pretrain_weights_path)
 
         model.compile(optimizer=optimizer, loss=yolo_loss)
 
@@ -255,7 +254,7 @@ def train_by_fit(train_datasets, valid_datasets, train_steps, valid_steps):
 
     model.save_weights(cfg.model_path)
 
-    if cfg.fine_tune:
+    if cfg.pretrain and cfg.fine_tune:
         cfg.batch_size = 8
         # 最大学习率
         learning_rate_base = cfg.learning_rate / 10

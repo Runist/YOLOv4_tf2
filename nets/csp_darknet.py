@@ -3,7 +3,7 @@
 # @Author: Runist
 # @Time : 2020/8/10 11:39
 # @Software: PyCharm
-# @Brief:
+# @Brief: yolo4的backbone
 from nets.yolo4 import *
 from tensorflow.keras import layers, models
 import config.config as cfg

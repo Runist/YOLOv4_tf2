@@ -3,7 +3,7 @@
 # @Author: Runist
 # @Time : 2020/5/20 16:03
 # @Software: PyCharm
-# @Brief: yolov4的模型结构
+# @Brief: yolov4的基本结构函数
 
 from tensorflow.keras import layers, regularizers
 import tensorflow as tf

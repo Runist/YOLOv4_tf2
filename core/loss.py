@@ -152,7 +152,7 @@ def cosine_decay_with_warmup(global_step,
     # 如果hold_base_rate_steps大于0，表明在warm up结束后学习率在一定步数内保持不变
     if hold_base_rate_steps > 0:
         learning_rate = np.where(global_step > warmup_steps + hold_base_rate_steps,
-                                    learning_rate, learning_rate_base)
+                                 learning_rate, learning_rate_base)
     if warmup_steps > 0:
         if learning_rate_base < warmup_learning_rate:
             raise ValueError('learning_rate_base must be larger or equal to warmup_learning_rate.')

@@ -3,7 +3,7 @@
 # @Author: Runist
 # @Time : 2020/8/10 11:41
 # @Software: PyCharm
-# @Brief:
+# @Brief: tiny-yolo4的backbone
 from nets.yolo4 import DarknetConv2D_BN_Leaky, Conv2D_Upsample, yolo_feat_reshape
 import config.config as cfg
 

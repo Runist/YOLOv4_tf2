@@ -3,7 +3,7 @@
 # @Author: Runist
 # @Time : 2020/5/22 10:39
 # @Software: PyCharm
-# @Brief:
+# @Brief: 数据集读取
 
 
 import tensorflow as tf
