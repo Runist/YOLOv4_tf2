@@ -65,7 +65,7 @@ IoU是比值的概念，对目标物体的scale是不敏感的。在 YOLOv3 中�
 
 CIOU将目标与anchor之间的距离，重叠率、尺度以及惩罚项都考虑进去，**使得目标框回归变得更加稳定，不会像IoU和GIoU一样出现训练过程中发散等问题。而惩罚因子把预测框长宽比拟合目标框的长宽比考虑进去。**
 
-<img src="https://i.loli.net/2020/09/02/wtRgoajvGnq52AZ.png" alt="20200425144646161.png" style="zoom:50%;" />
+<img src="https://i.loli.net/2020/09/02/wtRgoajvGnq52AZ.png" alt="20200425144646161.png" style="zoom:5%;" />
 
 CIOU公式如下：
 $$
@@ -120,9 +120,6 @@ $ python train.py
 1. 在pycharm中，import不同文件夹下的包没有问题。但在linux的terminal中调用则会包ImportError。
 	- 解决方法是import sys，之后添加sys.path.append("your project path")
 2. 在使用pretrain的方式训练模型，必须要指定pretrain_weights_path预训练模型的路径。
-
-## 安装
-
 
 
 ## Reference
