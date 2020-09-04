@@ -5,7 +5,6 @@
 # @Software: PyCharm
 # @Brief: 模型预测
 import config.config as cfg
-import tensorflow as tf
 import numpy as np
 import colorsys
 import os
