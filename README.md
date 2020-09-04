@@ -15,6 +15,42 @@
 - [x] Focal loss
 - [ ] Self-GAN
 
+
+
+## 快速开始
+
+1. 下载代码
+
+```python
+$ git clone https://github.com/Runist/YOLOv4.git
+```
+
+2. 安装依赖库
+
+```python
+$ pip install -r requirements.txt
+```
+
+3. 下载权重文件
+
+```python
+$ wget https://github.com/Runist/YOLOv4/releases/download/v1.0/pretrain_model.h5   
+```
+
+4. 将config/config.py中的文件信息修改至你的路径下
+
+5. 修改predict/predcit.py的图像路径，运行预测代码
+
+```python
+$ cd predict
+$ python predict.py
+```
+
+
+![show.png](https://i.loli.net/2020/09/04/pRtZ5FYhNc72olu.png)
+
+
+
 ## 改进
 
 ### Mosaic
@@ -52,13 +88,32 @@ LOSS_{CIOU} = 1 - IOU + \frac{\rho(b, {bt}^{gt})}{c^2} + \alpha v
 $$
 **以上两点是比较值得详细说一下的**
 
+
+
 ## config - 配置文件
 
-较为常用的配置文件一般是cfg、json格式的文件，因为没有原作者的框架复杂，所以在配置文件采用的是py格式，也方便各个文件的调用。在config.py中也有了较为详细的注释，如果有不懂请在issues中提问。
+较为常用的配置文件一般是cfg、json格式的文件，因为没有原作者的框架复杂，所以在配置文件采用的是py格式，也方便各个文件的调用。在config.py中也有了较为详细的注释，如果有不懂欢迎在issues中提问。
+
+
 
 ## 如何训练自己的数据集
 
 首先你的数据集放在什么位置都可以。其次你需要在config.py的annotation_path指定你的图片与真实框信息，如：D:/YOLOv3/VOCdevkit/VOC2012/JPEGImages/2007_000039.jpg 156,89,344,279,19
+
+如果想要使用ImageNet的预训练权重
+
+```python
+$ https://github.com/Runist/YOLOv4/releases/download/v1.0/pretrain_model.h5
+$ https://github.com/Runist/YOLOv4/releases/download/v1.0/pretrain_tiny_model.h5
+```
+
+配置好config.py文件后，运行如下代码
+
+```python
+$ python train.py
+```
+
+
 
 ## 一些问题和可能会出现的Bug
 
@@ -66,6 +121,11 @@ $$
 	- 解决方法是import sys，之后添加sys.path.append("your project path")
 2. 在使用pretrain的方式训练模型，必须要指定pretrain_weights_path预训练模型的路径。
 
+## 安装
+
+
+
 ## Reference
 
 - https://github.com/Ma-Dan/keras-yolo4
+- https://github.com/bubbliiiing/yolov4-keras
