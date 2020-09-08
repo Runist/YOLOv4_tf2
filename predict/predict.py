@@ -27,7 +27,6 @@ class Yolov4Predict(object):
 
     def __init__(self, model_path):
         self.class_names = cfg.class_names
-        self.anchors = cfg.anchors
         self.model_path = model_path
         self.score = cfg.score_threshold
 
@@ -158,7 +157,7 @@ class Yolov4Predict(object):
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-    img_path = "D:/Python_Code/Mask_detection/MaskDetection/images/00202.jpg"
+    img_path = r"D:\Python_Code\bridge-defect-detection\crack\dataset\CrackDetect\images\00003.jpg"
 
     yolo = Yolov4Predict(cfg.model_path)
     yolo.load_model()

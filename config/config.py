@@ -12,13 +12,11 @@ log_dir = r".\logs\summary"
 # 预训练模型的位置
 pretrain_weights_path = "D:/Python_Code/YOLOv4/config/pretrain_tiny_model.h5"
 # 模型路径
-model_path = "D:/Python_Code/YOLOv4/logs/model/yolov4.h5"
+model_path = "D:/Python_Code/YOLOv4/logs/model/tiny_crack.h5"
 best_model = "D:/Python_Code/YOLOv4/logs/model/best_model.h5"
 
 # 获得分类名
-class_names = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair',
-               'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep',
-               'sofa', 'train', 'tvmonitor']
+class_names = ['crack']
 
 # 模型相关参数
 num_classes = len(class_names)
@@ -29,8 +27,6 @@ epochs = 50
 
 # 余弦退火的学习率
 cosine_scheduler = False
-# 训练or预测
-training = False
 pretrain = False
 fine_tune = False
 train_mode = "fit"  # eager(自己撰写训练方式，偏底层的方式) fit(用.fit训练)
@@ -39,7 +35,7 @@ backbone = "tiny-csp-darknet"
 # nms与最低分数阈值
 ignore_thresh = 0.5
 iou_threshold = 0.3
-score_threshold = 0.55
+score_threshold = 0.52
 
 # 标签处理
 label_smooth = 0.05

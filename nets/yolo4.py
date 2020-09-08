@@ -60,7 +60,7 @@ def DarknetConv2D_BN_Mish(inputs, num_filter, kernel_size, strides=(1, 1), bn=Tr
                       kernel_initializer=tf.random_normal_initializer(stddev=0.01))(inputs)
 
     if bn:
-        x = layers.BatchNormalization()(x, training=cfg.training)
+        x = layers.BatchNormalization()(x)
         x = Mish()(x)
 
     return x
@@ -107,7 +107,7 @@ def DarknetConv2D_BN_Leaky(inputs, num_filter, kernel_size, strides=(1, 1), bn=T
         else:
             bn_name = None
 
-        x = layers.BatchNormalization(name=bn_name)(x, training=cfg.training)
+        x = layers.BatchNormalization(name=bn_name)(x)
         # alpha是x < 0时，变量系数
         x = layers.LeakyReLU(alpha=0.1)(x)
 

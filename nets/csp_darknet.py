@@ -73,7 +73,7 @@ def yolo4_body(input_shape):
     :return: model
     """
     input_image = layers.Input(shape=input_shape, dtype='float32', name="input_1")  # [b, 416, 416, 3]
-    if cfg.pretrain and cfg.training:
+    if cfg.pretrain:
         print('Load weights {}.'.format(cfg.pretrain_weights_path))
         # 加载模型
         pretrain_model = tf.keras.models.load_model(cfg.pretrain_weights_path,
