@@ -167,7 +167,7 @@ def train_by_eager(train_datasets, valid_datasets, train_steps, valid_steps):
                                      'reg_loss': '{:.4f}'.format(regularization_loss),
                                      })
 
-    # 保存loss，可以选择train的loss
+        # 保存loss，可以选择train的loss
         history_loss.append(valid_loss.result().numpy())
 
         # 保存到tensorboard里

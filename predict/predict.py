@@ -157,9 +157,9 @@ class Yolov4Predict(object):
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-    img_path = r"D:\Python_Code\bridge-defect-detection\crack\dataset\CrackDetect\images\00003.jpg"
+    img_path = r"D:\Python_Code\bridge-defect-detection\crack\dataset\Crack\Positive\00015.jpg"
 
-    yolo = Yolov4Predict(cfg.model_path)
+    yolo = Yolov4Predict(cfg.best_model)
     yolo.load_model()
 
     if not os.path.exists(img_path):

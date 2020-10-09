@@ -13,14 +13,15 @@ import os
 import re
 
 
-def convert_annotation(image):
+def convert_annotation(xml_path, image):
     """
     把单个xml转换成annotation格式
+    :param xml_path: 标签文件路径
     :param image: 图片id
     :return: bbox: 先验框的坐标信息
     """
     image_id = re.findall(r'(.+?)\.', image)[0]
-    in_file = open('D:/Python_Code/Mask_detection/MaskDetection/annotations/%s.xml' % image_id)
+    in_file = open('{}/{}.xml'.format(xml_path, image_id))
     tree = ET.parse(in_file)
     root = tree.getroot()
 
@@ -49,8 +50,8 @@ def convert_annotation(image):
 
 if __name__ == '__main__':
     # VOC数据集的路径
-    xml_path = 'D:/Python_Code/Mask_detection/MaskDetection/annotations'
-    image_path = 'D:/Python_Code/Mask_detection/MaskDetection/images'
+    xml_path = 'D:/Python_Code/Dataset/VOCdevkit/VOC2012/Annotations'
+    image_path = 'D:/Python_Code/Dataset/VOCdevkit/VOC2012/JPEGImages'
 
     total_xml = os.listdir(xml_path)
     total_img = os.listdir(image_path)
@@ -84,12 +85,13 @@ if __name__ == '__main__':
     for key, value in image_ids.items():
         files = open('../config/{}.txt'.format(key), 'w')
         for image in value:
-            bbox = convert_annotation(image)
+            print(image)
+            bbox = convert_annotation(xml_path, image)
             if len(bbox) == 0:
                 continue
 
             # 训练图片实际路径
-            files.write('D:/Python_Code/Mask_detection/MaskDetection/images/{}'.format(image))
+            files.write('{}/{}'.format(image_path, image))
             files.write(bbox)
 
             files.write('\n')

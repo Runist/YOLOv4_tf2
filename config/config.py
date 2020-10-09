@@ -12,11 +12,13 @@ log_dir = r".\logs\summary"
 # 预训练模型的位置
 pretrain_weights_path = "D:/Python_Code/YOLOv4/config/pretrain_tiny_model.h5"
 # 模型路径
-model_path = "D:/Python_Code/YOLOv4/logs/model/tiny_crack.h5"
+model_path = "D:/Python_Code/YOLOv4/logs/model/tiny_model.h5"
 best_model = "D:/Python_Code/YOLOv4/logs/model/best_model.h5"
 
 # 获得分类名
-class_names = ['crack']
+class_names = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
+               "car", "cat", "chair", "cow", "diningtable", "dog", "horse",
+               "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
 # 模型相关参数
 num_classes = len(class_names)
