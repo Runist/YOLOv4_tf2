@@ -1,5 +1,5 @@
 # YOLOv4
-
+## 已停止更新，请使用[更简洁的版本_Yolov4](https://github.com/Runist/YOLOv4)
 ## yolov4相比yolov3的新特性
 
 - [x] Mosaic data pretreatment
